@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from agent.safety import WorkspacePathPolicy
 from agent.tooling import ToolResult, ToolSpec
 
 
@@ -74,11 +75,15 @@ def build_filesystem_tools(workspace: Path | str) -> list[ToolSpec]:
 class FilesystemTools:
     def __init__(self, workspace: Path | str) -> None:
         self.workspace = Path(workspace).resolve()
+        self.path_policy = WorkspacePathPolicy(self.workspace)
 
     def list_files(self, arguments: dict[str, Any]) -> ToolResult:
         path = str(arguments.get("path", "."))
         recursive = bool(arguments.get("recursive", False))
-        target = self.workspace / path
+        resolution = self.path_policy.resolve(path)
+        if not resolution.ok or resolution.resolved_path is None:
+            return ToolResult(False, resolution.error, {"path": path})
+        target = resolution.resolved_path
         if not target.exists():
             return ToolResult(False, f"Path does not exist: {path}", {"path": path})
         if not target.is_dir():
@@ -100,7 +105,10 @@ class FilesystemTools:
     def read_file(self, arguments: dict[str, Any]) -> ToolResult:
         path = str(arguments["path"])
         max_chars = int(arguments.get("max_chars", 12000))
-        target = self.workspace / path
+        resolution = self.path_policy.resolve(path)
+        if not resolution.ok or resolution.resolved_path is None:
+            return ToolResult(False, resolution.error, {"path": path})
+        target = resolution.resolved_path
 
         if not target.exists():
             return ToolResult(False, f"File does not exist: {path}", {"path": path})
@@ -124,7 +132,10 @@ class FilesystemTools:
     def write_file(self, arguments: dict[str, Any]) -> ToolResult:
         path = str(arguments["path"])
         content = str(arguments.get("content", ""))
-        target = self.workspace / path
+        resolution = self.path_policy.resolve(path)
+        if not resolution.ok or resolution.resolved_path is None:
+            return ToolResult(False, resolution.error, {"path": path})
+        target = resolution.resolved_path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
         return ToolResult(
@@ -132,4 +143,3 @@ class FilesystemTools:
             f"Wrote {len(content)} characters to {path}",
             {"path": path, "characters": len(content)},
         )
-

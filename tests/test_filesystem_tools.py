@@ -80,6 +80,18 @@ def test_list_files_reports_missing_path() -> None:
     assert "does not exist" in result.content
 
 
+def test_list_files_rejects_parent_directory_traversal() -> None:
+    workspace = make_workspace()
+
+    try:
+        result = tools_by_name(workspace)["list_files"].handler({"path": ".."})
+    finally:
+        remove_workspace(workspace)
+
+    assert not result.ok
+    assert "outside workspace" in result.content
+
+
 def test_read_file_returns_file_content() -> None:
     workspace = make_workspace()
     (workspace / "hello.txt").write_text("hello", encoding="utf-8")
@@ -127,6 +139,21 @@ def test_read_file_reports_directory_error() -> None:
     assert "not a file" in result.content
 
 
+def test_read_file_rejects_absolute_path_outside_workspace() -> None:
+    workspace = make_workspace()
+    outside = workspace.parent / f"outside_{uuid.uuid4().hex}.txt"
+    outside.write_text("secret", encoding="utf-8")
+
+    try:
+        result = tools_by_name(workspace)["read_file"].handler({"path": str(outside.resolve())})
+    finally:
+        outside.unlink(missing_ok=True)
+        remove_workspace(workspace)
+
+    assert not result.ok
+    assert "outside workspace" in result.content
+
+
 def test_write_file_creates_parent_directories_and_reports_metadata() -> None:
     workspace = make_workspace()
 
@@ -142,3 +169,21 @@ def test_write_file_creates_parent_directories_and_reports_metadata() -> None:
     assert content == "VALUE = 42\n"
     assert result.metadata["path"] == "pkg/generated.py"
     assert result.metadata["characters"] == 11
+
+
+def test_write_file_rejects_parent_directory_traversal() -> None:
+    workspace = make_workspace()
+    outside = workspace.parent / f"outside_{uuid.uuid4().hex}.txt"
+
+    try:
+        result = tools_by_name(workspace)["write_file"].handler(
+            {"path": f"../{outside.name}", "content": "secret"}
+        )
+    finally:
+        created = outside.exists()
+        outside.unlink(missing_ok=True)
+        remove_workspace(workspace)
+
+    assert not result.ok
+    assert "outside workspace" in result.content
+    assert created is False
