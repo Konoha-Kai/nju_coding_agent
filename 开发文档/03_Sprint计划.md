@@ -117,13 +117,16 @@
 
 目标：
 - 将当前通用 harness 适配成更像真实 coding agent 的系统。
-- 建立可复现 coding agent 能力测试数据集，验证读代码、定位问题、修改代码、补测试、运行测试和基于失败结果迭代修复的闭环能力。
+- 接入公开 coding agent benchmark，优先使用 SWE-bench Lite，验证读代码、定位问题、修改代码、运行测试和基于失败结果迭代修复的闭环能力。
 - 在 coding 场景下补齐必要的安全边界和质量保障，避免 agent 在执行本地代码任务时越界访问、误执行高风险命令或生成不可复盘结果。
 
 任务：
-- 建立 `benchmarks/coding_tasks/` 任务数据集，覆盖 bugfix、feature、refactor、test generation、debug failure 等编码场景。
-- 为每个任务定义统一字段：任务目标、初始状态、允许工具、禁止行为、验收命令、评分点和预期日志证据。
-- 实现或整理一套完整工作测试流程：准备 workspace、运行 agent、检查 diff、运行 pytest、检查日志、记录评分。
+- 选定公开 benchmark：SWE-bench Lite 作为主目标，SWE-bench Verified 作为增强目标。
+- 调研并记录 SWE-bench、Terminal-Bench、LiveCodeBench、HumanEval、MBPP 的适用范围和本项目取舍。
+- 基于公开 SWE-bench Lite instance id 选择一个小规模固定子集，不自建 benchmark 数据集。
+- 实现或整理一套完整工作测试流程：准备公开 benchmark workspace、运行 agent、检查 patch、运行官方 evaluator、检查日志、记录评分。
+- 实现 SWE-bench 输入适配：将公开 issue、repo、base commit 转换为 agent 可执行任务。
+- 实现 SWE-bench 输出适配：将 agent 产生的 diff 转换为官方 predictions JSONL。
 - 增加 coding 场景执行摘要：列出修改文件、执行命令、测试结果、失败重试次数和最终状态。
 - 实现 workspace 路径边界检查，阻止路径穿越和 workspace 外文件访问。
 - 实现危险命令识别和确认机制，拦截删除、移动、安装依赖、网络下载等高风险命令。
@@ -133,10 +136,10 @@
 - 检查日志、README、视频脚本中不泄露 API key。
 
 验收：
-- 至少 5 个 coding benchmark 任务可复现运行。
-- 每个 benchmark 都包含任务说明、验收命令和评分点。
-- agent 能在 demo 任务中完成“读代码 -> 修改代码 -> 运行测试 -> 根据失败继续修复 -> 最终总结”的闭环。
-- benchmark 结果可以从 JSONL 日志和 Git diff 中复盘。
+- 至少 1 个 SWE-bench Lite 公开 instance 能完成从任务读取到 patch 输出的端到端流程。
+- 固定 5-10 个 SWE-bench Lite 公开 instance id 作为小规模评估子集。
+- benchmark 结果可以从 predictions JSONL、JSONL session log 和 Git diff 中复盘。
+- agent 能在公开 benchmark 或公开 instance 派生的 workspace 中完成“读代码 -> 修改代码 -> 运行测试 -> 根据失败继续修复 -> 最终总结”的闭环。
 - 越界路径被拒绝。
 - 高风险命令被拦截或要求确认。
 - 超时命令被终止，失败信息清晰返回。

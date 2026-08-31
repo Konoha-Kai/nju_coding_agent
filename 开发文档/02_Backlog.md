@@ -22,8 +22,8 @@
 | BL-103 | 作为开发者，我可以运行单元测试 | 覆盖 safety、filesystem、shell、parser | Partial：已覆盖 context、actions、loop，安全与工具测试待 Sprint 3 |
 | BL-104 | 作为用户，我能看到清晰最终总结 | 总结修改文件、执行命令、测试结果 | Partial：AgentResult 已追踪 changed_files/executed_commands，最终自然语言总结由模型生成 |
 | BL-105 | 作为评委，我能看到设计文档 | 开发文档持续更新 | In Progress |
-| BL-106 | 作为评委，我可以用固定 coding 任务集验证 agent 能力 | 至少 5 个 benchmark 任务覆盖 bugfix、feature、refactor、补测试和调试失败 | Todo：Sprint 3 |
-| BL-107 | 作为开发者，我可以按完整工作流验收 coding agent | 文档化准备 workspace、运行 agent、检查 diff、运行测试、检查日志、记录评分的流程 | Todo：Sprint 3 |
+| BL-106 | 作为评委，我可以用公开 benchmark 验证 agent 能力 | 接入 SWE-bench Lite，并固定 5-10 个公开 instance id 作为小规模评估子集 | Todo：Sprint 3 |
+| BL-107 | 作为开发者，我可以按完整工作流验收 coding agent | 文档化准备公开 benchmark workspace、运行 agent、生成 patch、运行官方 evaluator、检查日志、记录评分的流程 | Todo：Sprint 3 |
 
 ## P2：可选增强
 
@@ -36,4 +36,4 @@
 
 ## 当前说明
 
-Sprint 2 已补齐正式工具系统、DeepSeek/OpenAI 兼容 `tools/tool_calls`、文件工具、命令工具、JSONL 日志、demo workspace 和执行摘要追踪。Sprint 3 调整为 Coding 场景专项适配：建立 coding benchmark 数据集和完整工作测试流程，并在该场景下补齐路径安全、危险命令确认、质量测试和错误处理。
+Sprint 2 已补齐正式工具系统、DeepSeek/OpenAI 兼容 `tools/tool_calls`、文件工具、命令工具、JSONL 日志、demo workspace 和执行摘要追踪。Sprint 3 调整为 Coding 场景专项适配：不自建 benchmark 数据集，改为优先接入 SWE-bench Lite 等公开 benchmark，并在该场景下补齐路径安全、危险命令确认、质量测试和错误处理。

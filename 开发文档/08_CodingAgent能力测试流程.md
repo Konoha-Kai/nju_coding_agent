@@ -2,7 +2,7 @@
 
 ## 目标
 
-本流程用于验证项目是否真正具备 coding agent 能力，而不只是能调用大模型或执行单个工具。
+本流程用于验证项目是否真正具备 coding agent 能力，而不只是能调用大模型或执行单个工具。评估数据应优先来自公开 benchmark，不自建 benchmark 数据集。
 
 核心验证闭环：
 
@@ -10,22 +10,21 @@
 理解任务 -> 读取代码 -> 定位修改点 -> 修改代码 -> 运行测试 -> 根据失败结果继续修复 -> 输出最终总结 -> 日志可复盘
 ```
 
-## 测试数据集位置
+## 公开 Benchmark 选择
 
-```text
-benchmarks/coding_tasks/
-```
+主 benchmark：
 
-每个 benchmark 任务使用 Markdown 描述，包含以下字段：
+- SWE-bench Lite
 
-- `任务类型`：bugfix、feature、refactor、test_generation、debug_failure。
-- `目标`：用户交给 agent 的自然语言任务。
-- `初始状态`：任务开始前项目的关键状态。
-- `允许工具`：允许 agent 使用的工具。
-- `禁止行为`：不能执行的操作。
-- `验收命令`：完成后必须运行的命令。
-- `评分点`：用于人工或脚本化评分的标准。
-- `日志证据`：JSONL 日志中应能看到的关键事件。
+增强 benchmark：
+
+- SWE-bench Verified
+- Terminal-Bench
+- LiveCodeBench
+- HumanEval
+- MBPP
+
+`benchmarks/` 目录只保存接入说明、公开 instance id、运行结果和报告，不保存自建 benchmark 题目作为主评分依据。
 
 ## 能力维度
 
@@ -56,17 +55,17 @@ C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest
 
 ### 2. 选择 benchmark 任务
 
-从 `benchmarks/coding_tasks/` 中选择一个任务，例如：
+从公开 benchmark 中选择一个实例。Sprint 3 优先选择 SWE-bench Lite。官方 SWE-bench README 中的安装验证示例使用过如下公开 instance id：
 
 ```text
-task_001_bugfix_calculator.md
+sympy__sympy-20590
 ```
 
-读取任务中的 `目标` 和 `验收命令`。
+该 id 可用于验证 SWE-bench 环境，不直接代表最终 Lite 子集。实际评估 instance id 以 SWE-bench Lite 数据集为准。不要手写私有 benchmark 题目代替公开数据集。
 
 ### 3. 准备 isolated workspace
 
-每次 benchmark 应使用干净 workspace，避免前一次任务的修改影响本次评分。
+每次 benchmark 应使用官方 evaluator 或干净 workspace，避免前一次任务的修改影响本次评分。
 
 推荐做法：
 
@@ -74,20 +73,20 @@ task_001_bugfix_calculator.md
 git status --short --branch
 ```
 
-确认没有未提交的代码改动后再运行 benchmark。后续 Sprint 3 可以实现自动复制 benchmark fixture 的脚本。
+确认没有未提交的代码改动后再运行 benchmark。后续 Sprint 3 应接入 SWE-bench 的官方 Docker evaluator 或生成官方 predictions JSONL。
 
 ### 4. 运行 agent
 
-示例命令：
+本项目 adapter 的目标命令形态：
 
 ```powershell
-C:\Users\23639\.conda\envs\nju\python.exe -s main.py "Read calculator.py, fix the described bug, run the tests, and summarize changed files and test result." --workspace demo_workspace --max-steps 8 --session-id benchmark-task-001
+C:\Users\23639\.conda\envs\nju\python.exe -s main.py "<SWE-bench issue text>" --workspace <prepared_repo_workspace> --max-steps 20 --session-id swebench-<instance-id>
 ```
 
-### 5. 检查 Git diff
+### 5. 导出 Patch
 
 ```powershell
-git diff -- demo_workspace
+git diff
 ```
 
 检查内容：
@@ -96,20 +95,24 @@ git diff -- demo_workspace
 - 是否没有改动 `.env`、日志、缓存等无关文件。
 - 是否没有大范围重写无关代码。
 
-### 6. 运行验收命令
+同时将 diff 转换为 SWE-bench 官方 predictions JSONL。
 
-按任务文件中的 `验收命令` 执行，例如：
+### 6. 运行官方验收
 
-```powershell
-C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest demo_workspace/tests
+SWE-bench 官方流程使用 Docker 进行可复现评测。目标命令形态：
+
+```bash
+swebench eval SWE-bench/SWE-bench_Lite -p <predictions.jsonl> --run-id <run_id>
 ```
+
+具体 dataset 参数应以当前安装的 SWE-bench 版本为准。
 
 ### 7. 检查日志
 
 日志路径示例：
 
 ```text
-demo_workspace/logs/benchmark-task-001.jsonl
+<prepared_repo_workspace>/logs/swebench-<instance-id>.jsonl
 ```
 
 检查日志是否包含：
@@ -137,12 +140,13 @@ demo_workspace/logs/benchmark-task-001.jsonl
 
 ## Sprint 3 需要补齐的自动化能力
 
-- benchmark fixture 自动复制。
+- SWE-bench Lite instance 下载和 workspace 准备。
 - benchmark runner 自动执行 agent。
-- 自动收集 Git diff、pytest 结果和 JSONL 日志。
+- 自动收集 Git diff、pytest 或官方 evaluator 结果和 JSONL 日志。
+- 自动生成 SWE-bench predictions JSONL。
 - 自动生成 benchmark report。
 - coding 场景安全策略：限制越界路径、危险命令、依赖安装和网络下载。
 
 ## 当前结论
 
-Sprint 2 已证明 agent 具备工具调用和基础 demo 能力，但还没有完整 coding benchmark 数据集。Sprint 3 的重点应调整为 coding 场景专项适配，用可复现任务集证明 agent 的真实编码闭环能力。
+Sprint 2 已证明 agent 具备工具调用和基础 demo 能力，但还没有接入公开 coding benchmark。Sprint 3 的重点应调整为 coding 场景专项适配，优先接入 SWE-bench Lite，用公开基准证明 agent 的真实编码闭环能力。

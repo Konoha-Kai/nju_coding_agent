@@ -2,7 +2,7 @@
 
 南京大学软件学院推免考核项目：一个基于 DeepSeek API 的最小可运行 Coding Agent Harness。
 
-项目按软件工程流程开发，当前处于 Sprint 2 版本。核心目标是先完成可运行、可测试、可追踪的 Agent 主流程，后续 Sprint 3 将围绕 coding agent 场景做专项适配，建立 coding benchmark 数据集和完整工作测试流程，并补齐安全边界、危险命令审批和质量加固。
+项目按软件工程流程开发，当前处于 Sprint 2 版本。核心目标是先完成可运行、可测试、可追踪的 Agent 主流程，后续 Sprint 3 将围绕 coding agent 场景做专项适配，优先接入 SWE-bench Lite 等公开 benchmark，并补齐安全边界、危险命令审批和质量加固。
 
 ## 当前功能
 
@@ -135,27 +135,27 @@ demo_workspace/
 - `calculator.py`
 - `tests/test_calculator.py`
 
-### 9. Coding Benchmark 任务集
+### 9. 公开 Coding Benchmark 接入
 
-项目已开始维护 coding agent 能力测试任务集：
+项目不自建 benchmark 数据集，后续 Sprint 3 优先接入公开 benchmark：
 
 ```text
-benchmarks/coding_tasks/
+benchmarks/
 ```
 
-当前任务类型包括：
+推荐顺序：
 
-- bugfix：修复已有代码缺陷。
-- feature：新增功能并补测试。
-- refactor：在保持行为不变的前提下改善实现。
-- test_generation：只补充测试，不修改生产代码。
-- debug_failure：根据测试失败输出继续定位和修复。
+- SWE-bench Lite：主评估目标，验证真实 GitHub issue 修复能力。
+- SWE-bench Verified：增强评估目标，使用人工确认可解的问题子集。
+- Terminal-Bench：可选，验证终端环境下的工程任务执行能力。
+- LiveCodeBench：可选，验证代码生成、自修复、代码执行和测试输出预测。
+- HumanEval / MBPP：可选，只作为函数级代码生成 baseline。
 
 ## 当前限制
 
 以下内容计划在 Sprint 3 完成：
 
-- coding benchmark runner。
+- SWE-bench Lite adapter 和 benchmark runner。
 - 自动收集 Git diff、pytest 结果和 JSONL 日志。
 - workspace 路径安全边界。
 - 防止 `..`、绝对路径等越界访问。

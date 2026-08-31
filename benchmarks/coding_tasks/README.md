@@ -1,17 +1,15 @@
-# Coding Agent Benchmark Tasks
+# Public Coding Agent Benchmarks
 
-This directory contains reproducible coding tasks for evaluating the agent as a coding agent.
+This project should use public benchmarks instead of self-authored benchmark tasks.
 
-Each task describes:
+Sprint 3 uses this directory only for benchmark integration notes, selected public instance IDs, generated reports, and adapter scripts. It must not define private benchmark tasks as the primary scoring set.
 
-- task type
-- user goal
-- initial state
-- allowed tools
-- forbidden behavior
-- acceptance command
-- scoring points
-- expected log evidence
+Recommended benchmark order:
 
-Sprint 3 will add an automated benchmark runner that can execute these tasks, collect diffs, run tests, and generate a report.
+1. SWE-bench Lite: primary evaluation target for early iterations.
+2. SWE-bench Verified: stronger evaluation target after the harness is stable.
+3. Terminal-Bench: optional terminal-oriented agent evaluation.
+4. LiveCodeBench: optional code generation, self-repair, code execution, and test output prediction baseline.
+5. HumanEval / MBPP: optional small-function generation baselines, not enough to prove full coding-agent ability.
 
+Local demo workspaces may still be used for smoke tests, but they should be clearly labeled as demos rather than benchmark datasets.
