@@ -103,3 +103,62 @@ def test_run_command_uses_workspace_as_cwd() -> None:
     assert result.ok
     assert "ok" in result.content
 
+
+def test_run_command_rejects_dangerous_delete_by_default() -> None:
+    workspace = make_workspace()
+    (workspace / "keep.txt").write_text("keep", encoding="utf-8")
+
+    try:
+        result = run_command_tool(workspace).handler({"command": "del keep.txt"})
+        still_exists = (workspace / "keep.txt").exists()
+    finally:
+        remove_workspace(workspace)
+
+    assert not result.ok
+    assert "dangerous command" in result.content
+    assert result.metadata["blocked"] is True
+    assert still_exists is True
+
+
+def test_run_command_rejects_dependency_install_by_default() -> None:
+    workspace = make_workspace()
+
+    try:
+        result = run_command_tool(workspace).handler({"command": "pip install requests"})
+    finally:
+        remove_workspace(workspace)
+
+    assert not result.ok
+    assert "dangerous command" in result.content
+    assert result.metadata["reason"] == "dependency_install"
+
+
+def test_run_command_rejects_network_download_by_default() -> None:
+    workspace = make_workspace()
+
+    try:
+        result = run_command_tool(workspace).handler({"command": "curl https://example.com/file"})
+    finally:
+        remove_workspace(workspace)
+
+    assert not result.ok
+    assert "dangerous command" in result.content
+    assert result.metadata["reason"] == "network_download"
+
+
+def test_run_command_allows_dangerous_command_when_explicitly_enabled() -> None:
+    workspace = make_workspace()
+    command = f'"{sys.executable}" -c "print(\'safe execution path\')"'
+
+    try:
+        result = run_command_tool(workspace).handler(
+            {
+                "command": command,
+                "allow_dangerous": True,
+            }
+        )
+    finally:
+        remove_workspace(workspace)
+
+    assert result.ok
+    assert "safe execution path" in result.content

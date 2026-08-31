@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from agent.safety import CommandSafetyPolicy
 from agent.tooling import ToolResult, ToolSpec
 
 
@@ -25,6 +26,11 @@ def build_shell_tools(workspace: Path | str) -> list[ToolSpec]:
                         "description": "Maximum runtime before the command is stopped.",
                         "default": 30,
                     },
+                    "allow_dangerous": {
+                        "type": "boolean",
+                        "description": "Explicitly allow commands that are normally blocked by safety policy.",
+                        "default": False,
+                    },
                 },
                 "required": ["command"],
             },
@@ -36,10 +42,25 @@ def build_shell_tools(workspace: Path | str) -> list[ToolSpec]:
 class ShellTools:
     def __init__(self, workspace: Path | str) -> None:
         self.workspace = Path(workspace).resolve()
+        self.command_policy = CommandSafetyPolicy()
 
     def run_command(self, arguments: dict[str, Any]) -> ToolResult:
         command = str(arguments["command"])
         timeout_seconds = int(arguments.get("timeout_seconds", 30))
+        allow_dangerous = bool(arguments.get("allow_dangerous", False))
+        decision = self.command_policy.evaluate(command, allow_dangerous=allow_dangerous)
+        if not decision.allowed:
+            return ToolResult(
+                ok=False,
+                content=decision.message,
+                metadata={
+                    "command": command,
+                    "blocked": True,
+                    "reason": decision.reason,
+                    "timed_out": False,
+                    "exit_code": None,
+                },
+            )
 
         try:
             completed = subprocess.run(
@@ -85,4 +106,3 @@ class ShellTools:
                 "exit_code": completed.returncode,
             },
         )
-
