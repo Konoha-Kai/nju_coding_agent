@@ -15,6 +15,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("task", nargs="?", help="Programming task for the agent")
     parser.add_argument("--workspace", default=".", help="Workspace directory")
     parser.add_argument("--max-steps", type=int, default=12, help="Maximum agent loop steps")
+    parser.add_argument("--max-errors", type=int, default=3, help="Maximum consecutive tool errors")
     parser.add_argument("--log-dir", default="logs", help="Directory for JSONL session logs")
     parser.add_argument("--session-id", help="Stable session id for log filename")
     return parser.parse_args(argv)
@@ -46,6 +47,7 @@ def main() -> int:
         tool_registry=build_default_registry(workspace),
         logger=build_session_logger(workspace, args.log_dir, args.session_id),
         max_steps=args.max_steps,
+        max_errors=args.max_errors,
     )
     result = agent.run(task)
     print(result.final_message)

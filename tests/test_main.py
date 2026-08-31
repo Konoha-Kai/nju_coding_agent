@@ -10,6 +10,8 @@ def test_parse_args_accepts_logging_options() -> None:
             "demo",
             "--max-steps",
             "5",
+            "--max-errors",
+            "2",
             "--log-dir",
             "logs",
             "--session-id",
@@ -20,6 +22,7 @@ def test_parse_args_accepts_logging_options() -> None:
 
     assert args.workspace == "demo"
     assert args.max_steps == 5
+    assert args.max_errors == 2
     assert args.log_dir == "logs"
     assert args.session_id == "abc"
     assert args.task == "do task"
@@ -34,4 +37,3 @@ def test_build_session_logger_uses_workspace_relative_log_dir() -> None:
 
     assert logger.session_id == "session-1"
     assert logger.log_path == Path("project") / "logs" / "session-1.jsonl"
-

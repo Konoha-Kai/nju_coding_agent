@@ -78,6 +78,19 @@ def make_registry() -> ToolRegistry:
     return registry
 
 
+def make_failing_registry() -> ToolRegistry:
+    registry = ToolRegistry()
+    registry.register(
+        ToolSpec(
+            name="always_fail",
+            description="Always fail.",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda args: ToolResult(False, "failed"),
+        )
+    )
+    return registry
+
+
 def test_agent_passes_tool_schemas_to_model() -> None:
     workspace = make_workspace()
     model = FakeModelClient(['{"action":"final","message":"done"}'])
@@ -262,3 +275,70 @@ def test_agent_result_tracks_changed_files_and_executed_commands() -> None:
 
     assert result.changed_files == ["result.txt"]
     assert result.executed_commands == [command]
+
+
+def test_agent_stops_after_tool_error_threshold() -> None:
+    workspace = make_workspace()
+    model = FakeModelClient(
+        [
+            ModelReply(
+                content="",
+                tool_calls=[ToolCall(id="call_1", name="always_fail", arguments="{}")],
+                finish_reason="tool_calls",
+            ),
+            ModelReply(
+                content="",
+                tool_calls=[ToolCall(id="call_2", name="always_fail", arguments="{}")],
+                finish_reason="tool_calls",
+            ),
+            ModelReply(content="should not be used", finish_reason="stop"),
+        ]
+    )
+    agent = Agent(
+        model_client=model,
+        workspace=workspace,
+        tool_registry=make_failing_registry(),
+        max_steps=5,
+        max_errors=2,
+    )
+
+    try:
+        result = agent.run("trigger failures")
+    finally:
+        remove_workspace(workspace)
+
+    assert not result.success
+    assert result.steps == 2
+    assert "max_errors=2" in result.final_message
+    assert len(model.calls) == 2
+
+
+def test_agent_logs_error_threshold_event() -> None:
+    workspace = make_workspace()
+    log_path = workspace / "logs" / "errors.jsonl"
+    model = FakeModelClient(
+        [
+            ModelReply(
+                content="",
+                tool_calls=[ToolCall(id="call_1", name="always_fail", arguments="{}")],
+                finish_reason="tool_calls",
+            )
+        ]
+    )
+    agent = Agent(
+        model_client=model,
+        workspace=workspace,
+        tool_registry=make_failing_registry(),
+        logger=SessionLogger(log_path=log_path, session_id="errors"),
+        max_steps=5,
+        max_errors=1,
+    )
+
+    try:
+        agent.run("trigger one failure")
+        log_text = log_path.read_text(encoding="utf-8")
+    finally:
+        remove_workspace(workspace)
+
+    assert '"event": "agent_error"' in log_text
+    assert "Reached max_errors=1" in log_text

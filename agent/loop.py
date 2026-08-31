@@ -27,6 +27,7 @@ class Agent:
         model_client: ModelClient,
         workspace: Path | str,
         max_steps: int = 12,
+        max_errors: int = 3,
         tool_registry: ToolRegistry | None = None,
         logger: SessionLogger | None = None,
     ) -> None:
@@ -35,12 +36,14 @@ class Agent:
         self.tool_registry = tool_registry
         self.logger = logger
         self.max_steps = max_steps
+        self.max_errors = max_errors
 
     def run(self, task: str) -> AgentResult:
         context = ConversationContext.start(task, use_tool_calls=bool(self.tool_registry))
         observations: list[str] = []
         changed_files: list[str] = []
         executed_commands: list[str] = []
+        error_count = 0
         self._log("user_task", {"task": task, "max_steps": self.max_steps})
 
         for step in range(1, self.max_steps + 1):
@@ -84,6 +87,10 @@ class Agent:
 
                     observation = f"Tool {call.name} ok={result.ok}\n{result.content}"
                     observations.append(observation)
+                    if result.ok:
+                        error_count = 0
+                    else:
+                        error_count += 1
                     if result.ok and call.name == "write_file" and "path" in result.metadata:
                         changed_files.append(str(result.metadata["path"]))
                     if call.name == "run_command" and "command" in result.metadata:
@@ -100,6 +107,26 @@ class Agent:
                             "metadata": result.metadata,
                         },
                     )
+                    if error_count >= self.max_errors:
+                        agent_result = AgentResult(
+                            success=False,
+                            final_message=f"Reached max_errors={self.max_errors} before final answer.",
+                            steps=step,
+                            observations=observations,
+                            changed_files=changed_files,
+                            executed_commands=executed_commands,
+                        )
+                        self._log(
+                            "agent_error",
+                            {
+                                "success": agent_result.success,
+                                "steps": agent_result.steps,
+                                "final_message": agent_result.final_message,
+                                "changed_files": agent_result.changed_files,
+                                "executed_commands": agent_result.executed_commands,
+                            },
+                        )
+                        return agent_result
                 continue
 
             if self.tool_registry:
