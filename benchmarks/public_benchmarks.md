@@ -16,6 +16,10 @@ Secondary targets:
 - HumanEval
 - MBPP
 
+Lightweight smoke target:
+
+- HumanEval
+
 ## Public Sources
 
 | Benchmark | Official Source | What It Measures |
@@ -101,6 +105,18 @@ Recommended first milestone:
 
 ```text
 Run 1-3 SWE-bench Lite instances locally or document why local Docker evaluation is not available.
+```
+
+Lightweight fallback when Docker is unavailable:
+
+```text
+Run 1-10 HumanEval tasks with benchmarks.humaneval_runner.
+```
+
+Current HumanEval smoke result:
+
+```text
+HumanEval/0, deepseek-chat, pass@1=1.0, passed=1/1, agent steps=4
 ```
 
 Recommended final milestone:

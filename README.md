@@ -150,6 +150,7 @@ benchmarks/
 - Terminal-Bench：可选，验证终端环境下的工程任务执行能力。
 - LiveCodeBench：可选，验证代码生成、自修复、代码执行和测试输出预测。
 - HumanEval / MBPP：可选，只作为函数级代码生成 baseline。
+- HumanEval：已接入轻量本地 runner，可不依赖 Docker 直接跑小规模 pass/fail。
 
 ## 当前限制
 
@@ -333,6 +334,41 @@ swebench eval verified --gold -i sympy__sympy-20590 --run-id validate-gold
 C:\Users\23639\.conda\envs\nju\Scripts\swebench.exe eval lite -p benchmarks/reports/<run>.predictions.jsonl --run-id <run_id> -j 1
 ```
 
+## HumanEval 轻量测试
+
+HumanEval 是 OpenAI 官方公开数据集，当前项目已下载到：
+
+```text
+benchmarks/data/HumanEval/HumanEval.jsonl.gz
+```
+
+运行 1 道题的轻量 benchmark：
+
+```powershell
+$env:HTTP_PROXY=''
+$env:HTTPS_PROXY=''
+$env:ALL_PROXY=''
+C:\Users\23639\.conda\envs\nju\python.exe -s -m benchmarks.humaneval_runner --limit 1 --output-dir benchmarks\reports\humaneval_real_1 --model deepseek-chat
+```
+
+当前真实运行结果：
+
+```text
+HumanEval/0
+pass@1 = 1.0
+passed = 1 / 1
+agent steps = 4
+```
+
+结果文件：
+
+```text
+benchmarks/reports/humaneval_real_1/report.json
+benchmarks/reports/humaneval_real_1/samples.jsonl
+```
+
+注意：HumanEval 很轻量，适合快速看 agent 的代码生成和执行测试能力；它不是仓库级 bugfix benchmark，最终仍应以 SWE-bench Lite/Verified 作为更强证明。
+
 ## 运行测试
 
 ```bash
@@ -348,7 +384,7 @@ C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest
 当前验证结果：
 
 ```text
-72 passed
+79 passed
 ```
 
 ## 开发文档

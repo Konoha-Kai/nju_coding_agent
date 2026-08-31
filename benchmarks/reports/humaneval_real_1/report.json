@@ -1,0 +1,19 @@
+{
+  "benchmark": "HumanEval",
+  "model": "deepseek-chat",
+  "total": 1,
+  "passed": 1,
+  "pass@1": 1.0,
+  "samples_path": "benchmarks\\reports\\humaneval_real_1\\samples.jsonl",
+  "results": [
+    {
+      "task_id": "HumanEval/0",
+      "passed": true,
+      "result": "passed",
+      "agent_success": true,
+      "steps": 4,
+      "stdout": "",
+      "stderr": ""
+    }
+  ]
+}

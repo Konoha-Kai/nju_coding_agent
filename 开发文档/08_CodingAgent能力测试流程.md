@@ -24,6 +24,10 @@
 - HumanEval
 - MBPP
 
+轻量直接运行 benchmark：
+
+- HumanEval：不需要 Docker，适合快速验证 agent 的代码生成、写文件和本地测试能力。
+
 `benchmarks/` 目录只保存接入说明、公开 instance id、运行结果和报告，不保存自建 benchmark 题目作为主评分依据。
 
 ## 能力维度
@@ -108,6 +112,33 @@ swebench eval SWE-bench/SWE-bench_Lite -p <predictions.jsonl> --run-id <run_id>
 具体 dataset 参数应以当前安装的 SWE-bench 版本为准。
 
 本机当前已安装 `swebench` CLI，但未检测到 Docker，因此可以先运行 dry-run 和 predictions JSONL 生成流程；真实 resolved 评分需要 Docker 可用。
+
+### 9. HumanEval 轻量替代流程
+
+当本机没有 Docker 时，使用 HumanEval 做轻量性能 smoke test：
+
+```powershell
+$env:HTTP_PROXY=''
+$env:HTTPS_PROXY=''
+$env:ALL_PROXY=''
+C:\Users\23639\.conda\envs\nju\python.exe -s -m benchmarks.humaneval_runner --limit 1 --output-dir benchmarks\reports\humaneval_real_1 --model deepseek-chat
+```
+
+当前真实运行结果：
+
+```text
+HumanEval/0
+pass@1 = 1.0
+passed = 1 / 1
+agent steps = 4
+```
+
+输出文件：
+
+```text
+benchmarks/reports/humaneval_real_1/report.json
+benchmarks/reports/humaneval_real_1/samples.jsonl
+```
 
 ### 7. 检查日志
 
