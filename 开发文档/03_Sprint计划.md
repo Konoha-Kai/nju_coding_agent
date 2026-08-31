@@ -64,26 +64,55 @@
 
 状态：Done
 
-## Sprint 2：安全与质量
+## Sprint 2：完整功能补齐
+
+目标：
+- 在 Sprint 1 最小闭环基础上补齐 agent 的主要功能。
+- 将轻量 JSON action 协议升级为正式工具系统。
+- 先完成可用性和功能完整度，安全强化放到 Sprint 3。
+
+任务：
+- 实现 `ToolSpec` / `ToolResult` 工具抽象。
+- 实现工具注册表 `ToolRegistry`。
+- 接入 DeepSeek Chat Completions 的 `tools` / `tool_calls`。
+- 将 `list_files`、`read_file`、`write_file`、`run_command` 从轻量 action 迁移为正式 function tools。
+- 支持模型返回多个 tool calls 时顺序执行。
+- 支持清晰的最终任务总结，列出修改文件、执行命令和验证结果。
+- 实现 JSONL 执行日志。
+- 增加一个可复现 demo workspace，用于端到端演示。
+
+验收：
+- 日志可复盘完整 agent 执行过程。
+- agent 使用 DeepSeek 原生 tool calls 完成一次真实编程任务。
+- agent 能读取文件、修改文件、运行测试，并根据测试结果继续下一轮。
+- README 能说明正式工具系统和主循环流程。
+
+## Sprint 3：安全与质量
 
 目标：
 - 增加软件工程质量保障。
 - 让系统更适合面试解释和评分。
+- 为本地文件和命令执行建立明确安全边界。
 
 任务：
 - 实现 workspace 路径边界检查。
+- 阻止路径穿越和 workspace 外文件访问。
 - 实现危险命令识别和确认机制。
-- 实现命令超时。
-- 实现 JSONL 执行日志。
-- 编写基础单元测试。
+- 完善命令超时、输出截断和失败处理。
+- 增加错误阈值终止条件。
+- 增加 safety、filesystem、shell、tool parser 单元测试。
+- 增加代码风格检查或基础静态检查。
+- 检查日志、README、视频脚本中不泄露 API key。
 
 验收：
 - 越界路径被拒绝。
-- 高风险命令被拦截。
+- 高风险命令被拦截或要求确认。
 - 超时命令被终止。
-- 日志可复盘完整 agent 执行过程。
+- 工具参数非法时返回清晰错误。
+- `pytest` 覆盖核心安全与工具逻辑。
+- `.env` 和敏感日志不会进入 Git。
 
-## Sprint 3：演示与交付
+## Sprint 4：演示与交付
 
 目标：
 - 准备稳定视频 demo 和最终提交材料。
