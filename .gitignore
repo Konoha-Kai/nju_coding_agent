@@ -13,3 +13,4 @@ logs/
 pytest_tmp/
 test_workspace/
 benchmarks/vendor/
+benchmarks/reports/*/workspaces/
