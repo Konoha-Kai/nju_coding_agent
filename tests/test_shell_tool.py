@@ -162,3 +162,20 @@ def test_run_command_allows_dangerous_command_when_explicitly_enabled() -> None:
 
     assert result.ok
     assert "safe execution path" in result.content
+
+
+def test_run_command_truncates_large_output() -> None:
+    workspace = make_workspace()
+    command = f'"{sys.executable}" -c "print(\'x\' * 200)"'
+
+    try:
+        result = run_command_tool(workspace).handler(
+            {"command": command, "max_output_chars": 80}
+        )
+    finally:
+        remove_workspace(workspace)
+
+    assert result.ok
+    assert len(result.content) < 140
+    assert "...[truncated]" in result.content
+    assert result.metadata["truncated"] is True

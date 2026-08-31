@@ -31,6 +31,11 @@ def build_shell_tools(workspace: Path | str) -> list[ToolSpec]:
                         "description": "Explicitly allow commands that are normally blocked by safety policy.",
                         "default": False,
                     },
+                    "max_output_chars": {
+                        "type": "integer",
+                        "description": "Maximum combined output characters returned to the model.",
+                        "default": 12000,
+                    },
                 },
                 "required": ["command"],
             },
@@ -47,6 +52,7 @@ class ShellTools:
     def run_command(self, arguments: dict[str, Any]) -> ToolResult:
         command = str(arguments["command"])
         timeout_seconds = int(arguments.get("timeout_seconds", 30))
+        max_output_chars = int(arguments.get("max_output_chars", 12000))
         allow_dangerous = bool(arguments.get("allow_dangerous", False))
         decision = self.command_policy.evaluate(command, allow_dangerous=allow_dangerous)
         if not decision.allowed:
@@ -74,23 +80,27 @@ class ShellTools:
         except subprocess.TimeoutExpired as exc:
             stdout = exc.stdout or ""
             stderr = exc.stderr or ""
-            return ToolResult(
-                ok=False,
-                content=(
+            content, truncated = _truncate_output(
+                (
                     f"Command timed out after {timeout_seconds}s\n"
                     f"STDOUT:\n{stdout}\nSTDERR:\n{stderr}"
                 ),
+                max_output_chars,
+            )
+            return ToolResult(
+                ok=False,
+                content=content,
                 metadata={
                     "command": command,
                     "timeout_seconds": timeout_seconds,
                     "timed_out": True,
                     "exit_code": None,
+                    "truncated": truncated,
                 },
             )
 
-        return ToolResult(
-            ok=completed.returncode == 0,
-            content="\n".join(
+        content, truncated = _truncate_output(
+            "\n".join(
                 [
                     f"exit_code={completed.returncode}",
                     "STDOUT:",
@@ -99,10 +109,26 @@ class ShellTools:
                     completed.stderr.strip(),
                 ]
             ).strip(),
+            max_output_chars,
+        )
+        return ToolResult(
+            ok=completed.returncode == 0,
+            content=content,
             metadata={
                 "command": command,
                 "timeout_seconds": timeout_seconds,
                 "timed_out": False,
                 "exit_code": completed.returncode,
+                "truncated": truncated,
             },
         )
+
+
+def _truncate_output(content: str, max_chars: int) -> tuple[str, bool]:
+    if max_chars < 1:
+        max_chars = 1
+    if len(content) <= max_chars:
+        return content, False
+    suffix = "\n...[truncated]"
+    keep = max(max_chars - len(suffix), 0)
+    return content[:keep] + suffix, True
