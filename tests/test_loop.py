@@ -4,6 +4,7 @@ import shutil
 import uuid
 
 from agent.context import ConversationContext
+from agent.logger import SessionLogger
 from agent.loop import Agent
 from agent.model_client import ModelReply, ToolCall
 from agent.tooling import ToolRegistry, ToolResult, ToolSpec
@@ -176,3 +177,45 @@ def test_context_adds_assistant_tool_calls_and_tool_results() -> None:
         "tool_call_id": "call_1",
         "content": "ok=True\nhello",
     }
+
+
+def test_agent_logs_task_tool_and_finish_events() -> None:
+    workspace = make_workspace()
+    log_path = workspace / "logs" / "session.jsonl"
+    model = FakeModelClient(
+        [
+            ModelReply(
+                content="",
+                tool_calls=[
+                    ToolCall(id="call_1", name="echo", arguments='{"text":"hello"}')
+                ],
+                finish_reason="tool_calls",
+            ),
+            ModelReply(content="done", finish_reason="stop"),
+        ]
+    )
+    agent = Agent(
+        model_client=model,
+        workspace=workspace,
+        tool_registry=make_registry(),
+        logger=SessionLogger(log_path=log_path, session_id="test-session"),
+        max_steps=3,
+    )
+
+    try:
+        agent.run("echo hello")
+        events = [
+            line.split('"event": "', 1)[1].split('"', 1)[0]
+            for line in log_path.read_text(encoding="utf-8").splitlines()
+        ]
+    finally:
+        remove_workspace(workspace)
+
+    assert events == [
+        "user_task",
+        "model_reply",
+        "tool_call",
+        "tool_result",
+        "model_reply",
+        "agent_finish",
+    ]
