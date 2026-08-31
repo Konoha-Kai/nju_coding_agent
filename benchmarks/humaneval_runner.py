@@ -178,10 +178,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(
+    argv: list[str] | None = None,
+    agent_factory: Callable[[Path], AgentLike] | None = None,
+) -> int:
     args = parse_args(argv)
     problems = load_humaneval_problems(args.dataset, limit=args.limit)
-    report = run_humaneval_subset(problems, args.output_dir, args.model)
+    report = run_humaneval_subset(problems, args.output_dir, args.model, agent_factory=agent_factory)
     print(json.dumps({"pass@1": report["pass@1"], "passed": report["passed"], "total": report["total"]}))
     return 0 if report["passed"] == report["total"] else 1
 
@@ -199,3 +202,7 @@ def _build_agent(workspace: Path, task_id: str, model_name: str) -> Agent:
 
 def _safe_task_name(task_id: str) -> str:
     return task_id.replace("/", "_").replace("\\", "_")
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

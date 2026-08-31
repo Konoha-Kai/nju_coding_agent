@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import gzip
 from pathlib import Path
 
 from benchmarks.humaneval_runner import (
     HumanEvalProblem,
     build_humaneval_agent_task,
     evaluate_completion,
+    main,
     load_humaneval_problems,
     run_humaneval_subset,
 )
@@ -150,3 +152,49 @@ def test_run_humaneval_subset_prefers_solution_file_over_final_message() -> None
     assert report["pass@1"] == 1.0
     sample = json.loads((output_dir / "samples.jsonl").read_text(encoding="utf-8").strip())
     assert sample["completion"] == "    return a + b\n"
+
+
+def test_main_runs_subset_with_default_dataset() -> None:
+    dataset_path = Path("test_workspace") / "humaneval_main_dataset.jsonl.gz"
+    dataset_path.parent.mkdir(parents=True, exist_ok=True)
+    with gzip.open(dataset_path, "wt", encoding="utf-8") as file:
+        file.write(
+            json.dumps(
+                {
+                    "task_id": "HumanEval/Test",
+                    "prompt": "def always_true():\n",
+                    "canonical_solution": "    return True\n",
+                    "test": "def check(candidate):\n    assert candidate() is True\n",
+                    "entry_point": "always_true",
+                }
+            )
+            + "\n"
+        )
+
+    exit_code = main(
+        [
+            "--dataset",
+            str(dataset_path),
+            "--limit",
+            "1",
+            "--output-dir",
+            "test_workspace/humaneval_main",
+            "--model",
+            "fake-model",
+        ],
+        agent_factory=lambda workspace: _AlwaysCorrectAgent(),
+    )
+
+    assert exit_code == 0
+
+
+class _AlwaysCorrectAgent:
+    def run(self, task: str):
+        class Result:
+            success = True
+            final_message = "```python\n    return True\n```"
+            steps = 1
+            changed_files = []
+            executed_commands = []
+
+        return Result()
