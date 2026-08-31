@@ -12,3 +12,4 @@ logs/
 .tmp/
 pytest_tmp/
 test_workspace/
+benchmarks/vendor/

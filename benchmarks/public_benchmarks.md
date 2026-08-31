@@ -27,6 +27,16 @@ Secondary targets:
 | HumanEval | https://github.com/openai/human-eval | Python function completion |
 | MBPP | https://github.com/google-research/google-research/tree/master/mbpp | Basic Python programming problems with tests |
 
+## Local Reference Download
+
+The official SWE-bench repository has been cloned locally for Sprint 3 reference:
+
+```text
+benchmarks/vendor/SWE-bench
+```
+
+The `benchmarks/vendor/` directory is intentionally ignored by Git. The project should commit only its own adapter scripts, tests, selected public instance IDs, and reports, not a vendored copy of the upstream SWE-bench repository.
+
 ## Why SWE-bench Lite First
 
 SWE-bench evaluates whether an agent can resolve real GitHub issues by producing patches against real repositories. It matches this project's goal better than single-function code generation benchmarks because the agent must inspect a repository, edit files, and rely on tests for verification.
