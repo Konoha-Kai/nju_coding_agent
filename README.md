@@ -2,7 +2,7 @@
 
 南京大学软件学院推免考核项目：一个基于 DeepSeek API 的最小可运行 Coding Agent Harness。
 
-项目按软件工程流程开发，当前处于 Sprint 2 版本。核心目标是先完成可运行、可测试、可追踪的 Agent 主流程，后续 Sprint 3 再补齐安全边界、危险命令审批和质量加固。
+项目按软件工程流程开发，当前处于 Sprint 2 版本。核心目标是先完成可运行、可测试、可追踪的 Agent 主流程，后续 Sprint 3 将围绕 coding agent 场景做专项适配，建立 coding benchmark 数据集和完整工作测试流程，并补齐安全边界、危险命令审批和质量加固。
 
 ## 当前功能
 
@@ -135,10 +135,28 @@ demo_workspace/
 - `calculator.py`
 - `tests/test_calculator.py`
 
+### 9. Coding Benchmark 任务集
+
+项目已开始维护 coding agent 能力测试任务集：
+
+```text
+benchmarks/coding_tasks/
+```
+
+当前任务类型包括：
+
+- bugfix：修复已有代码缺陷。
+- feature：新增功能并补测试。
+- refactor：在保持行为不变的前提下改善实现。
+- test_generation：只补充测试，不修改生产代码。
+- debug_failure：根据测试失败输出继续定位和修复。
+
 ## 当前限制
 
 以下内容计划在 Sprint 3 完成：
 
+- coding benchmark runner。
+- 自动收集 Git diff、pytest 结果和 JSONL 日志。
 - workspace 路径安全边界。
 - 防止 `..`、绝对路径等越界访问。
 - 危险 shell 命令拦截。
@@ -164,6 +182,7 @@ nju_ai_coding_agent/
 │   ├── filesystem.py       # 文件系统工具
 │   └── shell.py            # Shell 命令工具
 ├── tests/                  # 单元测试
+├── benchmarks/             # Coding agent 能力测试任务集
 ├── demo_workspace/         # 演示 workspace
 ├── 开发文档/               # 软件工程过程文档
 ├── main.py                 # CLI 入口
@@ -308,6 +327,7 @@ C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest
 - `05_Harness架构图.md`
 - `06_DeepSeek参考记录.md`
 - `07_Sprint1复盘与改进.md`
+- `08_CodingAgent能力测试流程.md`
 
 这些文档用于展示需求分析、Backlog、Sprint 拆分、接口设计、架构设计和开发复盘。
 
