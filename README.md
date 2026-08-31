@@ -167,6 +167,8 @@ benchmarks/
 
 因此当前版本适合在受控目录内做功能演示和测试，不适合作为无监督生产 Agent 使用。
 
+Sprint 3 当前已接入 SWE-bench Lite 公共数据和官方 CLI，但真实官方评测依赖 Docker。本机当前未检测到 `docker` 命令，因此可以完成 instance 读取、任务构造、agent 运行、patch 导出和 evaluator dry-run；完整容器评测需要安装并启动 Docker 后执行。
+
 ## 项目结构
 
 ```text
@@ -291,6 +293,46 @@ C:\Users\23639\.conda\envs\nju\python.exe -s main.py "Read calculator.py and sum
 C:\Users\23639\.conda\envs\nju\python.exe -s main.py "Run the demo workspace tests and summarize the result. Do not modify files." --workspace demo_workspace --max-steps 6 --session-id demo-test
 ```
 
+## SWE-bench 使用
+
+本项目已下载 SWE-bench Lite 公共数据：
+
+```text
+benchmarks/data/SWE-bench_Lite/
+```
+
+固定小规模公开 dev 子集：
+
+```text
+benchmarks/selected_swebench_lite_dev_ids.txt
+```
+
+官方 SWE-bench 参考仓库下载在本地：
+
+```text
+benchmarks/vendor/SWE-bench
+```
+
+该目录已加入 `.gitignore`，不会提交第三方源码。
+
+生成官方 gold validation 命令：
+
+```powershell
+C:\Users\23639\.conda\envs\nju\python.exe -s benchmarks\swebench_evaluator.py --gold-validation --run-id validate-gold --dry-run
+```
+
+输出：
+
+```text
+swebench eval verified --gold -i sympy__sympy-20590 --run-id validate-gold
+```
+
+真实官方评测需要 Docker：
+
+```powershell
+C:\Users\23639\.conda\envs\nju\Scripts\swebench.exe eval lite -p benchmarks/reports/<run>.predictions.jsonl --run-id <run_id> -j 1
+```
+
 ## 运行测试
 
 ```bash
@@ -306,7 +348,7 @@ C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest
 当前验证结果：
 
 ```text
-44 passed
+72 passed
 ```
 
 ## 开发文档

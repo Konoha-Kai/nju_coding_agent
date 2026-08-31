@@ -147,6 +147,31 @@
 - `pytest` 覆盖核心 coding 工作流、安全与工具逻辑。
 - `.env` 和敏感日志不会进入 Git。
 
+已完成：
+- 下载官方 SWE-bench 仓库到 `benchmarks/vendor/SWE-bench`，并将 vendor 目录加入 Git ignore。
+- 下载 SWE-bench Lite dev/test parquet 公共数据到 `benchmarks/data/SWE-bench_Lite/`。
+- 安装官方 `swebench` CLI 到 `nju` 环境。
+- 实现 `benchmarks/swebench_adapter.py`，支持 instance -> agent task、Git diff -> predictions JSONL。
+- 实现 `benchmarks/swebench_runner.py`，支持 prepared workspace 单实例运行和 report 输出。
+- 实现 `benchmarks/swebench_evaluator.py`，封装官方 evaluator 命令和 gold validation dry-run。
+- 实现 `benchmarks/swebench_dataset.py`，支持读取 SWE-bench Lite parquet 和导出 instance JSON。
+- 建立 `benchmarks/selected_swebench_lite_dev_ids.txt` 固定 10 个公开 dev instance id。
+- 实现 workspace 路径边界检查。
+- 实现危险 shell 命令默认拦截。
+- 实现 shell 输出截断。
+- 实现 agent 连续工具错误阈值。
+
+环境限制：
+- 本机当前未检测到 Docker，因此不能在本机完成官方容器评测。
+- 当前已完成官方数据下载、CLI 安装、adapter、runner、predictions JSONL 输出和 evaluator dry-run。
+
+验证：
+- `C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest` 通过，72 passed。
+- `C:\Users\23639\.conda\envs\nju\Scripts\swebench.exe --help` 可用。
+- evaluator dry-run 输出 `swebench eval verified --gold -i sympy__sympy-20590 --run-id validate-gold`。
+
+状态：Done，真实官方 Docker 评测待 Docker 环境可用后运行。
+
 ## Sprint 4：演示与交付
 
 目标：

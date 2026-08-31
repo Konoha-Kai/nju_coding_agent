@@ -107,6 +107,8 @@ swebench eval SWE-bench/SWE-bench_Lite -p <predictions.jsonl> --run-id <run_id>
 
 具体 dataset 参数应以当前安装的 SWE-bench 版本为准。
 
+本机当前已安装 `swebench` CLI，但未检测到 Docker，因此可以先运行 dry-run 和 predictions JSONL 生成流程；真实 resolved 评分需要 Docker 可用。
+
 ### 7. 检查日志
 
 日志路径示例：
