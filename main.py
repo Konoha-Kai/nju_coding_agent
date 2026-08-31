@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 from agent import Agent
+from agent.bootstrap import build_default_registry
 from agent.model_client import ModelClient
 
 
@@ -22,9 +23,11 @@ def main() -> int:
         print("No task provided.")
         return 1
 
+    workspace = Path(args.workspace)
     agent = Agent(
         model_client=ModelClient(),
-        workspace=Path(args.workspace),
+        workspace=workspace,
+        tool_registry=build_default_registry(workspace),
         max_steps=args.max_steps,
     )
     result = agent.run(task)
@@ -34,4 +37,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
