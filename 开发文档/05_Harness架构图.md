@@ -7,25 +7,20 @@ flowchart TB
     User[User / CLI] --> Main[main.py]
     Main --> Agent[Agent Loop]
     Agent --> Context[Context Manager]
-    Agent --> Registry[Tool Registry]
+    Agent --> Actions[Lightweight Action Dispatcher]
     Agent --> ModelClient[Model Client]
 
     ModelClient --> DeepSeek[DeepSeek Chat Completions API]
     DeepSeek --> ModelClient
 
-    Agent --> Parser[Tool Call Parser]
-    Parser --> Registry
+    Agent --> Parser[JSON Action Parser]
+    Parser --> Actions
 
-    Registry --> FS[Filesystem Tools]
-    Registry --> Shell[Shell Tool]
-    Registry --> Safety[Safety Guard]
+    Actions --> FS[list/read/write file]
+    Actions --> Shell[run command]
 
-    Safety --> Workspace[(Workspace)]
     FS --> Workspace
     Shell --> Workspace
-
-    Agent --> Logger[JSONL Logger]
-    Logger --> SessionLog[(Session Logs)]
 
     Agent --> Result[Final Response]
     Result --> User
@@ -41,8 +36,7 @@ sequenceDiagram
     participant C as Context
     participant M as Model Client
     participant D as DeepSeek API
-    participant T as Local Tools
-    participant L as Logger
+    participant T as Local Actions
 
     U->>CLI: 输入编程任务
     CLI->>A: run(task)
@@ -51,16 +45,13 @@ sequenceDiagram
     M->>D: POST /chat/completions
     D-->>M: assistant message / tool_calls
     M-->>A: ModelReply
-    A->>L: 记录模型回复
 
-    alt 返回 tool_calls
-        A->>T: 校验并执行本地工具
+    alt 返回 action JSON
+        A->>T: 执行本地动作
         T-->>A: ToolResult
-        A->>C: 写入 tool message
-        A->>L: 记录工具结果
+        A->>C: 写入 Observation
         A->>M: 下一轮 chat(messages, tools)
     else 返回最终回复
-        A->>L: 记录 agent_finish
         A-->>CLI: AgentResult
         CLI-->>U: 输出最终结果
     end
@@ -73,19 +64,12 @@ graph LR
     main[main.py] --> loop[agent.loop]
     loop --> context[agent.context]
     loop --> model[agent.model_client]
-    loop --> schema[agent.tool_schema]
-    loop --> logger[agent.logger]
-    schema --> filesystem[tools.filesystem]
-    schema --> shell[tools.shell]
-    filesystem --> safety[tools.safety]
-    shell --> safety
+    loop --> actions[agent.actions]
 ```
 
 ## 4. 设计说明
 
-- Harness 负责把模型能力、本地工具、上下文和执行日志组合成一个可控运行环境。
-- DeepSeek API 只负责模型推理和 function tool call 决策。
-- 文件读写、命令执行、安全策略、日志和循环控制都在本地项目中自行实现。
-- workspace 是所有文件和命令操作的边界。
-- session logs 用于复盘每一次任务执行过程，也便于录制视频和面试说明。
-
+- Sprint 1 初版 Harness 负责把模型能力、轻量动作、本地执行和上下文组合成最小闭环。
+- DeepSeek API 只负责模型推理，当前不使用正式 function tool calls。
+- 文件读写、命令执行和循环控制都在本地项目中自行实现。
+- 安全策略、正式工具注册和 session logs 将在 Sprint 2 加入。

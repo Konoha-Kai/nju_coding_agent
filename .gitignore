@@ -9,3 +9,6 @@ __pycache__/
 logs/
 *.log
 *.tmp
+.tmp/
+pytest_tmp/
+test_workspace/

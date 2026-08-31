@@ -4,14 +4,14 @@
 
 | ID | 用户故事 | 验收标准 | 状态 |
 | --- | --- | --- | --- |
-| BL-001 | 作为用户，我可以通过 CLI 输入一个编程任务 | `main.py` 支持命令行任务参数 | Todo |
+| BL-001 | 作为用户，我可以通过 CLI 输入一个编程任务 | `main.py` 支持命令行任务参数 | Done |
 | BL-002 | 作为系统，我可以调用 DeepSeek API | `test_deepseek_api.py` 在 `nju` 环境下通过 | Done |
-| BL-003 | 作为 agent，我可以维护多轮消息上下文 | 工具结果能进入下一轮模型请求 | Todo |
-| BL-004 | 作为 agent，我可以读取 workspace 文件 | 支持 list/read 工具，限制路径 | Todo |
-| BL-005 | 作为 agent，我可以写入 workspace 文件 | 支持 write/replace 工具，限制路径 | Todo |
-| BL-006 | 作为 agent，我可以执行本地命令 | 返回 stdout、stderr、exit code、timeout | Todo |
-| BL-007 | 作为 agent，我可以解析模型 tool_calls | 支持 function name 和 JSON arguments | Todo |
-| BL-008 | 作为系统，我可以判断循环终止 | 支持 done、max steps、error threshold | Todo |
+| BL-003 | 作为 agent，我可以维护多轮消息上下文 | 工具结果能进入下一轮模型请求 | Done |
+| BL-004 | 作为 agent，我可以读取 workspace 文件 | 支持 list/read 工具，限制路径 | Partial：已支持 list/read，路径安全待 Sprint 2 |
+| BL-005 | 作为 agent，我可以写入 workspace 文件 | 支持 write/replace 工具，限制路径 | Partial：已支持 write，路径安全待 Sprint 2 |
+| BL-006 | 作为 agent，我可以执行本地命令 | 返回 stdout、stderr、exit code、timeout | Partial：已支持命令执行和超时，危险命令控制待 Sprint 2 |
+| BL-007 | 作为 agent，我可以解析模型 tool_calls | 支持 function name 和 JSON arguments | Partial：Sprint 1 使用轻量 JSON action，正式 tool_calls 待 Sprint 2 |
+| BL-008 | 作为系统，我可以判断循环终止 | 支持 done、max steps、error threshold | Partial：已支持 final 和 max_steps，错误阈值待 Sprint 2 |
 
 ## P1：建议完成
 
@@ -19,7 +19,7 @@
 | --- | --- | --- | --- |
 | BL-101 | 作为开发者，我可以查看执行日志 | 每轮请求、响应、工具结果写入 JSONL | Todo |
 | BL-102 | 作为用户，我可以确认危险命令 | 删除、移动、安装依赖等命令前拦截 | Todo |
-| BL-103 | 作为开发者，我可以运行单元测试 | 覆盖 safety、filesystem、shell、parser | Todo |
+| BL-103 | 作为开发者，我可以运行单元测试 | 覆盖 safety、filesystem、shell、parser | Partial：已覆盖 context、actions、loop |
 | BL-104 | 作为用户，我能看到清晰最终总结 | 总结修改文件、执行命令、测试结果 | Todo |
 | BL-105 | 作为评委，我能看到设计文档 | 开发文档持续更新 | In Progress |
 
@@ -32,3 +32,6 @@
 | BL-203 | 支持计划面板 | agent 每轮更新任务计划 | Todo |
 | BL-204 | 支持更细粒度文件补丁 | 用 patch 而不是整文件覆盖 | Todo |
 
+## 当前说明
+
+Sprint 1 初版先实现轻量动作协议，不接入正式 DeepSeek `tools/tool_calls`，也暂不加入安全边界。当前 `list_files/read_file/write_file/run_command/final` 由模型返回 JSON action 后本地分发执行，用于先完成最小可运行闭环。正式工具系统、路径安全和危险命令确认进入 Sprint 2。

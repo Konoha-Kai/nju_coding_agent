@@ -26,21 +26,43 @@
 
 目标：
 - 实现可运行的 coding agent 主循环。
-- 支持模型请求、工具注册、工具调用解析、工具执行和结果回填。
+- 支持模型请求、轻量动作解析、本地动作执行和结果回填。
+- 本 sprint 暂不实现正式工具系统和安全边界，先保证基础功能闭环。
 
 任务：
 - 实现 `agent/model_client.py`。
 - 实现 `agent/loop.py`。
 - 实现 `agent/context.py`。
-- 实现 `tools/filesystem.py`。
-- 实现 `tools/shell.py`。
+- 实现 `agent/actions.py`，提供初版 list/read/write/run_command 动作。
 - 实现 `main.py`。
+- 建立 `tests/` 测试目录。
+- 为上下文、动作解析、本地动作和主循环编写初版测试。
 
 验收：
 - agent 能读取一个 demo 项目文件。
 - agent 能修改文件。
 - agent 能执行一条测试命令。
 - agent 能基于工具结果继续下一轮。
+- `conda run -n nju python -s -m pytest` 通过。
+
+已完成：
+- `agent/context.py`：维护 system、user、assistant 和 observation 消息。
+- `agent/model_client.py`：封装 DeepSeek API 调用。
+- `agent/actions.py`：实现轻量 JSON action 解析和本地动作执行。
+- `agent/loop.py`：实现最小 agent 循环。
+- `main.py`：提供 CLI 入口。
+- `tests/`：建立测试目录并覆盖上下文、动作和主循环。
+
+暂缓：
+- 正式工具系统。
+- workspace 安全边界。
+- 危险命令审批。
+- JSONL session logs。
+
+验证：
+- `C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest` 通过，7 passed。
+
+状态：Done
 
 ## Sprint 2：安全与质量
 
@@ -77,4 +99,3 @@
 - demo 能稳定复现。
 - README.txt 不超过 1000 汉字。
 - zip 只包含 README.txt 和 mp4。
-
