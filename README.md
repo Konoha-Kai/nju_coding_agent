@@ -4,18 +4,20 @@ Minimal coding agent harness for the NJU software engineering assessment.
 
 ## Current Scope
 
-Sprint 1 implements a first runnable version:
+Sprint 2 implements the current runnable version:
 
 - DeepSeek API client.
 - Conversation context.
-- Minimal agent loop.
-- Lightweight JSON action protocol.
-- Local file actions: list, read, write.
-- Local command action: run command with timeout.
+- Agent loop with DeepSeek/OpenAI-compatible `tools` and `tool_calls`.
+- Tool registry and OpenAI-compatible tool schema export.
+- Filesystem tools: list, read, write.
+- Shell tool: run command with timeout.
+- JSONL session logs.
+- Execution summary tracking for changed files and commands.
 - CLI entrypoint.
 - Unit tests.
 
-Formal tool registry, workspace safety boundary, dangerous command approval, and JSONL session logs are planned for later sprints.
+Workspace safety boundary, dangerous command approval, richer output truncation, and quality hardening are planned for Sprint 3.
 
 ## API Key Test
 
@@ -64,6 +66,14 @@ Without activating the shell:
 conda run -n nju python -s main.py "List the workspace files, then give a final summary."
 ```
 
+Run against the demo workspace:
+
+```bash
+conda run -n nju python -s main.py "Use tools to inspect the project, then summarize it." --workspace demo_workspace --session-id demo
+```
+
+Session logs are written to `logs/<session-id>.jsonl` under the selected workspace.
+
 ## Run Tests
 
 ```bash
@@ -74,4 +84,10 @@ Without activating the shell:
 
 ```bash
 C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest
+```
+
+Current validation:
+
+```text
+44 passed
 ```

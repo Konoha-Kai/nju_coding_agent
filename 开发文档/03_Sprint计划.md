@@ -96,6 +96,23 @@
 - agent 能读取文件、修改文件、运行测试，并根据测试结果继续下一轮。
 - README 能说明正式工具系统和主循环流程。
 
+已完成：
+- `agent/tooling.py`：实现 `ToolSpec`、`ToolResult`、`ToolRegistry`。
+- `tools/filesystem.py`：实现 `list_files`、`read_file`、`write_file` 正式工具。
+- `tools/shell.py`：实现 `run_command` 正式工具。
+- `agent/model_client.py`：支持传入 `tools` 并解析 `tool_calls`。
+- `agent/context.py`：支持 assistant tool calls 和 tool role 结果回填。
+- `agent/loop.py`：支持正式 tool_calls 执行循环、执行摘要和日志事件。
+- `agent/logger.py`：实现 JSONL session logs。
+- `agent/bootstrap.py`：装配默认工具注册表。
+- `demo_workspace/`：提供可复现 demo 项目。
+
+验证：
+- `C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest` 通过，44 passed。
+- DeepSeek 真实冒烟测试通过：使用正式 tools 列出 `demo_workspace` 文件并返回最终总结。
+
+状态：Done
+
 ## Sprint 3：安全与质量
 
 目标：
