@@ -1,8 +1,11 @@
 from dataclasses import dataclass
+import json
 from pathlib import Path
 import shutil
+import sys
 import uuid
 
+from agent.bootstrap import build_default_registry
 from agent.context import ConversationContext
 from agent.logger import SessionLogger
 from agent.loop import Agent
@@ -219,3 +222,43 @@ def test_agent_logs_task_tool_and_finish_events() -> None:
         "model_reply",
         "agent_finish",
     ]
+
+
+def test_agent_result_tracks_changed_files_and_executed_commands() -> None:
+    workspace = make_workspace()
+    command = f'"{sys.executable}" -c "print(\'ok\')"'
+    model = FakeModelClient(
+        [
+            ModelReply(
+                content="",
+                tool_calls=[
+                    ToolCall(
+                        id="call_1",
+                        name="write_file",
+                        arguments='{"path":"result.txt","content":"ok"}',
+                    ),
+                    ToolCall(
+                        id="call_2",
+                        name="run_command",
+                        arguments=json.dumps({"command": command}),
+                    ),
+                ],
+                finish_reason="tool_calls",
+            ),
+            ModelReply(content="done", finish_reason="stop"),
+        ]
+    )
+    agent = Agent(
+        model_client=model,
+        workspace=workspace,
+        tool_registry=build_default_registry(workspace),
+        max_steps=3,
+    )
+
+    try:
+        result = agent.run("write and test")
+    finally:
+        remove_workspace(workspace)
+
+    assert result.changed_files == ["result.txt"]
+    assert result.executed_commands == [command]

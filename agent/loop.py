@@ -17,6 +17,8 @@ class AgentResult:
     final_message: str
     steps: int
     observations: list[str] = field(default_factory=list)
+    changed_files: list[str] = field(default_factory=list)
+    executed_commands: list[str] = field(default_factory=list)
 
 
 class Agent:
@@ -37,6 +39,8 @@ class Agent:
     def run(self, task: str) -> AgentResult:
         context = ConversationContext.start(task, use_tool_calls=bool(self.tool_registry))
         observations: list[str] = []
+        changed_files: list[str] = []
+        executed_commands: list[str] = []
         self._log("user_task", {"task": task, "max_steps": self.max_steps})
 
         for step in range(1, self.max_steps + 1):
@@ -80,6 +84,10 @@ class Agent:
 
                     observation = f"Tool {call.name} ok={result.ok}\n{result.content}"
                     observations.append(observation)
+                    if result.ok and call.name == "write_file" and "path" in result.metadata:
+                        changed_files.append(str(result.metadata["path"]))
+                    if call.name == "run_command" and "command" in result.metadata:
+                        executed_commands.append(str(result.metadata["command"]))
                     context.add_tool_result(call.id, result)
                     self._log(
                         "tool_result",
@@ -100,6 +108,8 @@ class Agent:
                     final_message=reply.content,
                     steps=step,
                     observations=observations,
+                    changed_files=changed_files,
+                    executed_commands=executed_commands,
                 )
                 self._log(
                     "agent_finish",
@@ -107,6 +117,8 @@ class Agent:
                         "success": agent_result.success,
                         "steps": agent_result.steps,
                         "final_message": agent_result.final_message,
+                        "changed_files": agent_result.changed_files,
+                        "executed_commands": agent_result.executed_commands,
                     },
                 )
                 return agent_result
@@ -125,6 +137,8 @@ class Agent:
                     final_message=str(action.get("message", "")),
                     steps=step,
                     observations=observations,
+                    changed_files=changed_files,
+                    executed_commands=executed_commands,
                 )
                 self._log(
                     "agent_finish",
@@ -132,6 +146,8 @@ class Agent:
                         "success": agent_result.success,
                         "steps": agent_result.steps,
                         "final_message": agent_result.final_message,
+                        "changed_files": agent_result.changed_files,
+                        "executed_commands": agent_result.executed_commands,
                     },
                 )
                 return agent_result
@@ -146,6 +162,8 @@ class Agent:
             final_message=f"Reached max_steps={self.max_steps} before final answer.",
             steps=self.max_steps,
             observations=observations,
+            changed_files=changed_files,
+            executed_commands=executed_commands,
         )
         self._log(
             "agent_error",
@@ -153,6 +171,8 @@ class Agent:
                 "success": agent_result.success,
                 "steps": agent_result.steps,
                 "final_message": agent_result.final_message,
+                "changed_files": agent_result.changed_files,
+                "executed_commands": agent_result.executed_commands,
             },
         )
         return agent_result
