@@ -35,7 +35,7 @@ class Agent:
         self.max_steps = max_steps
 
     def run(self, task: str) -> AgentResult:
-        context = ConversationContext.start(task)
+        context = ConversationContext.start(task, use_tool_calls=bool(self.tool_registry))
         observations: list[str] = []
         self._log("user_task", {"task": task, "max_steps": self.max_steps})
 

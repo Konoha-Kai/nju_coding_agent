@@ -25,15 +25,26 @@ Rules:
 - Use final only when the task is complete or cannot proceed.
 """
 
+TOOL_CALLING_SYSTEM_PROMPT = """You are a coding agent running inside a local harness.
+Use the provided tools to inspect files, edit files, run commands, and verify work.
+
+Rules:
+- Prefer reading relevant files before editing.
+- Use tools whenever local workspace state is needed.
+- After command failures, inspect the error and continue fixing.
+- When the task is complete, respond with a concise final summary.
+- Mention changed files, commands run, and validation results when available.
+"""
+
 
 @dataclass
 class ConversationContext:
     messages: list[dict[str, Any]] = field(default_factory=list)
 
     @classmethod
-    def start(cls, task: str) -> "ConversationContext":
+    def start(cls, task: str, use_tool_calls: bool = False) -> "ConversationContext":
         context = cls()
-        context.add_system(SYSTEM_PROMPT)
+        context.add_system(TOOL_CALLING_SYSTEM_PROMPT if use_tool_calls else SYSTEM_PROMPT)
         context.add_user(task)
         return context
 
