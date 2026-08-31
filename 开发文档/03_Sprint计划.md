@@ -71,6 +71,11 @@
 - 将轻量 JSON action 协议升级为正式工具系统。
 - 先完成可用性和功能完整度，安全强化放到 Sprint 3。
 
+提交策略：
+- 每完成一个工具就本地 commit 一次。
+- 工程实现和测试代码分开 commit。
+- Sprint 2 全部完成并通过验证后，再统一 push 到 GitHub。
+
 任务：
 - 实现 `ToolSpec` / `ToolResult` 工具抽象。
 - 实现工具注册表 `ToolRegistry`。
