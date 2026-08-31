@@ -121,7 +121,7 @@ def run_humaneval_subset(
             workspace.mkdir(parents=True, exist_ok=True)
             agent = agent_factory(workspace) if agent_factory else _build_agent(workspace, problem.task_id, model_name)
             agent_result = agent.run(build_humaneval_agent_task(problem))
-            completion = extract_completion(str(getattr(agent_result, "final_message", "")))
+            completion = _load_completion(problem, workspace, agent_result)
             evaluation = evaluate_completion(problem, completion)
             passed += int(evaluation["passed"])
             sample = {"task_id": problem.task_id, "completion": completion}
@@ -157,6 +157,16 @@ def extract_completion(text: str) -> str:
     if fenced:
         return fenced.group(1).strip("\n") + "\n"
     return text.strip("\n") + "\n"
+
+
+def _load_completion(problem: HumanEvalProblem, workspace: Path, agent_result: Any) -> str:
+    solution_path = workspace / "solution.py"
+    if solution_path.exists():
+        solution = solution_path.read_text(encoding="utf-8")
+        if solution.startswith(problem.prompt):
+            return solution[len(problem.prompt) :].strip("\n") + "\n"
+        return solution.strip("\n") + "\n"
+    return extract_completion(str(getattr(agent_result, "final_message", "")))
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

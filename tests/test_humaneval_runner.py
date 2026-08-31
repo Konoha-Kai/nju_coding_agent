@@ -108,3 +108,45 @@ def test_run_humaneval_subset_writes_samples_and_report() -> None:
     ]
     assert samples == [{"task_id": "HumanEval/0", "completion": "    return a + b\n"}]
     assert (output_dir / "report.json").exists()
+
+
+def test_run_humaneval_subset_prefers_solution_file_over_final_message() -> None:
+    class FileWritingAgent:
+        def __init__(self, workspace: Path) -> None:
+            self.workspace = workspace
+
+        def run(self, task: str):
+            (self.workspace / "solution.py").write_text(
+                "def add(a, b):\n    return a + b\n",
+                encoding="utf-8",
+            )
+
+            class Result:
+                success = True
+                final_message = "done"
+                steps = 2
+                changed_files = ["solution.py"]
+                executed_commands = []
+
+            return Result()
+
+    problem = HumanEvalProblem(
+        task_id="HumanEval/0",
+        prompt="def add(a, b):\n",
+        canonical_solution="    return a + b\n",
+        test="def check(candidate):\n    assert candidate(1, 2) == 3\n",
+        entry_point="add",
+    )
+    output_dir = Path("test_workspace") / "humaneval_solution_file"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    report = run_humaneval_subset(
+        problems=[problem],
+        output_dir=output_dir,
+        model_name="fake-model",
+        agent_factory=lambda workspace: FileWritingAgent(workspace),
+    )
+
+    assert report["pass@1"] == 1.0
+    sample = json.loads((output_dir / "samples.jsonl").read_text(encoding="utf-8").strip())
+    assert sample["completion"] == "    return a + b\n"
