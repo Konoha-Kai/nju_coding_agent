@@ -1,76 +1,84 @@
-from types import SimpleNamespace
+from __future__ import annotations
 
-from agent.model_client import ModelClient, ToolCall
+import pytest
+
+from agent.model_client import ModelClient, ModelClientError, ToolCall
 
 
-class FakeCompletions:
-    def __init__(self, response) -> None:
+class FakeTransport:
+    def __init__(self, response: dict) -> None:
         self.response = response
-        self.calls = []
+        self.calls: list[dict] = []
 
-    def create(self, **kwargs):
-        self.calls.append(kwargs)
+    def __call__(self, url: str, payload: dict, headers: dict[str, str], timeout_seconds: int) -> dict:
+        self.calls.append(
+            {
+                "url": url,
+                "payload": payload,
+                "headers": headers,
+                "timeout_seconds": timeout_seconds,
+            }
+        )
         return self.response
 
 
-class FakeOpenAIClient:
-    def __init__(self, response) -> None:
-        self.chat = SimpleNamespace(
-            completions=FakeCompletions(response),
-        )
+def make_response(message: dict, finish_reason: str = "stop") -> dict:
+    return {"choices": [{"message": message, "finish_reason": finish_reason}]}
 
 
-def make_response(message, finish_reason="stop"):
-    return SimpleNamespace(
-        choices=[
-            SimpleNamespace(
-                message=message,
-                finish_reason=finish_reason,
-            )
-        ]
+def test_model_client_posts_messages_and_tools_to_api() -> None:
+    transport = FakeTransport(make_response({"content": "done"}))
+    client = ModelClient(
+        api_key="test-key",
+        base_url="https://api.deepseek.com",
+        model="deepseek-chat",
+        transport=transport,
     )
-
-
-def test_model_client_passes_messages_and_tools_to_api() -> None:
-    message = SimpleNamespace(content="done", tool_calls=None)
-    fake_client = FakeOpenAIClient(make_response(message))
-    client = ModelClient(openai_client=fake_client, model="deepseek-chat")
     tools = [{"type": "function", "function": {"name": "echo"}}]
 
     reply = client.chat([{"role": "user", "content": "hello"}], tools=tools)
 
-    call = fake_client.chat.completions.calls[0]
-    assert call["model"] == "deepseek-chat"
-    assert call["messages"] == [{"role": "user", "content": "hello"}]
-    assert call["tools"] == tools
-    assert call["tool_choice"] == "auto"
+    call = transport.calls[0]
+    assert call["url"] == "https://api.deepseek.com/chat/completions"
+    assert call["headers"]["Authorization"] == "Bearer test-key"
+    assert call["payload"]["model"] == "deepseek-chat"
+    assert call["payload"]["messages"] == [{"role": "user", "content": "hello"}]
+    assert call["payload"]["tools"] == tools
+    assert call["payload"]["tool_choice"] == "auto"
     assert reply.content == "done"
     assert reply.tool_calls == []
 
 
 def test_model_client_omits_tools_when_none() -> None:
-    message = SimpleNamespace(content="done", tool_calls=None)
-    fake_client = FakeOpenAIClient(make_response(message))
-    client = ModelClient(openai_client=fake_client, model="deepseek-chat")
+    transport = FakeTransport(make_response({"content": "done"}))
+    client = ModelClient(api_key="test-key", model="deepseek-chat", transport=transport)
 
     client.chat([{"role": "user", "content": "hello"}])
 
-    call = fake_client.chat.completions.calls[0]
-    assert "tools" not in call
-    assert "tool_choice" not in call
+    payload = transport.calls[0]["payload"]
+    assert "tools" not in payload
+    assert "tool_choice" not in payload
 
 
 def test_model_client_parses_tool_calls() -> None:
-    raw_tool_call = SimpleNamespace(
-        id="call_1",
-        function=SimpleNamespace(
-            name="read_file",
-            arguments='{"path":"README.md"}',
-        ),
+    transport = FakeTransport(
+        make_response(
+            {
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call_1",
+                        "function": {
+                            "name": "read_file",
+                            "arguments": '{"path":"README.md"}',
+                        },
+                    }
+                ],
+            },
+            finish_reason="tool_calls",
+        )
     )
-    message = SimpleNamespace(content=None, tool_calls=[raw_tool_call])
-    fake_client = FakeOpenAIClient(make_response(message, finish_reason="tool_calls"))
-    client = ModelClient(openai_client=fake_client, model="deepseek-chat")
+    client = ModelClient(api_key="test-key", model="deepseek-chat", transport=transport)
 
     reply = client.chat([{"role": "user", "content": "read"}], tools=[])
 
@@ -84,3 +92,14 @@ def test_model_client_parses_tool_calls() -> None:
         )
     ]
 
+
+def test_model_client_requires_api_key() -> None:
+    with pytest.raises(ModelClientError, match="DEEPSEEK_API_KEY"):
+        ModelClient(api_key="", transport=FakeTransport({}))
+
+
+def test_model_client_rejects_malformed_response() -> None:
+    client = ModelClient(api_key="test-key", transport=FakeTransport({"choices": []}))
+
+    with pytest.raises(ModelClientError, match="missing choices"):
+        client.chat([{"role": "user", "content": "hello"}])

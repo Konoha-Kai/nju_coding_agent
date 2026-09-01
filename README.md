@@ -8,7 +8,7 @@
 
 ### DeepSeek 模型调用
 
-- 通过 OpenAI-compatible SDK 调用 DeepSeek。
+- 通过项目自写 HTTP 客户端调用 DeepSeek OpenAI-compatible Chat Completions API。
 - 从 `.env` 读取 API 配置。
 - 默认模型为 `deepseek-chat`。
 - 支持 DeepSeek/OpenAI 兼容的 `tools` 和 `tool_calls` 协议。
@@ -183,7 +183,7 @@ C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest
 当前验证结果：
 
 ```text
-63 passed
+65 passed
 ```
 
 ## 开发文档

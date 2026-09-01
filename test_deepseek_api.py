@@ -2,7 +2,8 @@ import os
 import sys
 
 from dotenv import load_dotenv
-from openai import OpenAI
+
+from agent.model_client import ModelClient
 
 
 def main() -> int:
@@ -16,12 +17,11 @@ def main() -> int:
         print("DEEPSEEK_API_KEY is not set. Put it in .env or your shell environment.")
         return 1
 
-    client = OpenAI(api_key=api_key, base_url=base_url)
+    client = ModelClient(api_key=api_key, base_url=base_url, model=model)
 
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
+        reply = client.chat(
+            [
                 {
                     "role": "system",
                     "content": "You are a concise API connectivity test assistant.",
@@ -30,17 +30,14 @@ def main() -> int:
                     "role": "user",
                     "content": "Reply with exactly: deepseek api ok",
                 },
-            ],
-            temperature=0,
-            max_tokens=20,
+            ]
         )
     except Exception as exc:
         print(f"DeepSeek API test failed: {exc}")
         return 1
 
-    content = response.choices[0].message.content or ""
     print(f"Model: {model}")
-    print(f"Response: {content.strip()}")
+    print(f"Response: {reply.content.strip()}")
     return 0
 
 

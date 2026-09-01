@@ -6,19 +6,10 @@
 
 - OpenAI 兼容 base URL：`https://api.deepseek.com`。
 - API key 通过环境变量提供。
-- 可使用 OpenAI SDK 调用 DeepSeek。
+- DeepSeek 提供 OpenAI-compatible API 协议，但本项目不使用 OpenAI SDK。
 - Chat API 路径为 `/chat/completions`。
 
-项目采用：
-
-```python
-from openai import OpenAI
-
-client = OpenAI(
-    api_key=os.environ["DEEPSEEK_API_KEY"],
-    base_url=os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
-)
-```
+本项目采用 `agent/model_client.py` 中基于 Python 标准库 `urllib.request` 的 HTTP 客户端，直接请求 `/chat/completions`。这样可以满足“不使用任何 agent 框架 / SDK”的约束，同时保留 DeepSeek OpenAI-compatible 协议的 `messages`、`tools` 和 `tool_calls` 数据结构。
 
 ## 2. Chat Completions
 
@@ -57,7 +48,7 @@ client = OpenAI(
 - agent 可以读写 workspace 文件、运行命令、维护计划。
 - 操作可能受权限策略约束。
 - session 目录可以保存 JSONL 日志。
-- Python SDK 示例强调 workspace、session root、session id。
+- Python SDK 示例强调 workspace、session root、session id；本项目只参考这些工程概念，不使用该 SDK。
 
 本项目不直接使用 DeepSeek Harness SDK，因为题目禁止使用 agent 框架 / SDK。这里只参考它的工程思想：
 
@@ -74,4 +65,3 @@ client = OpenAI(
 - DeepSeek Tool Calls: https://api-docs.deepseek.com/guides/tool_calls/
 - DeepSeek Harness Guide: https://deepseek-harness.github.io/deepseek-harness/en/guide/quickstart
 - DeepSeek Harness Python SDK: https://deepseek-harness.github.io/deepseek-harness/en/guide/python-sdk
-
