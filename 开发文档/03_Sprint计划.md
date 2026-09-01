@@ -165,16 +165,33 @@
 ## Sprint 4：演示与交付
 
 目标：
-- 准备稳定视频 demo 和最终提交材料。
+- 准备稳定可复现的最终演示流程和提交材料。
+- 确保交付内容能说明项目目标、运行方式、测试结果、benchmark 结果和工程过程。
+- 进行敏感信息检查，避免 API key、`.env`、缓存日志等进入提交材料。
 
 任务：
-- 准备 demo 项目。
-- 准备演示任务脚本。
-- 编写最终 `README.txt`。
-- 录制 2 分钟以内视频。
-- 检查仓库、视频、README 是否泄露凭据。
+- 整理最终 `README.txt`，控制在 1000 汉字以内，说明项目简介、环境、运行命令、测试命令和 HumanEval 结果。
+- 编写 `开发文档/11_演示脚本.md`，用于 2 分钟以内视频录制。
+- 编写 `开发文档/12_交付检查清单.md`，记录提交前检查项和结果。
+- 确认 `README.md` 与开发文档中的 Sprint 状态一致。
+- 运行全量 pytest。
+- 扫描仓库文档和 benchmark 产物，确认不泄露 API key。
+- 检查 Git 状态并推送最终提交到 GitHub。
 
 验收：
 - demo 能稳定复现。
 - README.txt 不超过 1000 汉字。
-- zip 只包含 README.txt 和 mp4。
+- README.txt、演示脚本、交付检查清单均已提交。
+- `pytest` 全量通过。
+- API key 扫描无命中。
+- GitHub `main` 分支已包含 Sprint4 交付材料。
+
+已完成：
+- 已编写最终 `README.txt`。
+- 已编写 `开发文档/11_演示脚本.md`。
+- 已编写 `开发文档/12_交付检查清单.md`。
+- 已验证全量测试：63 passed。
+- 已验证 Sprint4 Agent demo：demo tests 2 passed。
+- 已完成 API key 文档扫描：无命中。
+
+状态：Done
