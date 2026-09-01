@@ -107,6 +107,7 @@ def run_humaneval_subset(
     output_dir: Path | str,
     model_name: str,
     agent_factory: Callable[[Path], AgentLike] | None = None,
+    resume: bool = False,
 ) -> dict[str, Any]:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -114,25 +115,47 @@ def run_humaneval_subset(
     report_path = output_path / "report.json"
     rows = []
     passed = 0
+    existing_samples = _load_existing_samples(samples_path) if resume else {}
+    sample_mode = "a" if resume and samples_path.exists() else "w"
 
-    with samples_path.open("w", encoding="utf-8", newline="\n") as samples_file:
+    with samples_path.open(sample_mode, encoding="utf-8", newline="\n") as samples_file:
         for problem in problems:
             workspace = output_path / "workspaces" / _safe_task_name(problem.task_id)
             workspace.mkdir(parents=True, exist_ok=True)
-            agent = agent_factory(workspace) if agent_factory else _build_agent(workspace, problem.task_id, model_name)
-            agent_result = agent.run(build_humaneval_agent_task(problem))
-            completion = _load_completion(problem, workspace, agent_result)
-            evaluation = evaluate_completion(problem, completion)
+            source = "agent"
+            agent_success = False
+            steps = 0
+            if problem.task_id in existing_samples:
+                completion = existing_samples[problem.task_id]
+                source = "resumed_sample"
+                try:
+                    evaluation = evaluate_completion(problem, completion)
+                except Exception as exc:  # pragma: no cover - defensive for long-running benchmark scripts
+                    evaluation = _error_evaluation("evaluation_error", exc)
+            else:
+                try:
+                    agent = agent_factory(workspace) if agent_factory else _build_agent(workspace, problem.task_id, model_name)
+                    agent_result = agent.run(build_humaneval_agent_task(problem))
+                    completion = _load_completion(problem, workspace, agent_result)
+                    agent_success = bool(getattr(agent_result, "success", False))
+                    steps = int(getattr(agent_result, "steps", 0))
+                    evaluation = evaluate_completion(problem, completion)
+                except Exception as exc:
+                    completion = ""
+                    evaluation = _error_evaluation("agent_error", exc)
             passed += int(evaluation["passed"])
-            sample = {"task_id": problem.task_id, "completion": completion}
-            samples_file.write(json.dumps(sample, ensure_ascii=False) + "\n")
+            if source != "resumed_sample":
+                sample = {"task_id": problem.task_id, "completion": completion}
+                samples_file.write(json.dumps(sample, ensure_ascii=False) + "\n")
+                samples_file.flush()
             rows.append(
                 {
                     "task_id": problem.task_id,
                     "passed": evaluation["passed"],
                     "result": evaluation["result"],
-                    "agent_success": bool(getattr(agent_result, "success", False)),
-                    "steps": int(getattr(agent_result, "steps", 0)),
+                    "source": source,
+                    "agent_success": agent_success,
+                    "steps": steps,
                     "stdout": evaluation["stdout"],
                     "stderr": evaluation["stderr"],
                 }
@@ -150,6 +173,22 @@ def run_humaneval_subset(
     }
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     return report
+
+
+def _load_existing_samples(samples_path: Path) -> dict[str, str]:
+    samples: dict[str, str] = {}
+    if not samples_path.exists():
+        return samples
+    for line in samples_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        sample = json.loads(line)
+        samples[str(sample["task_id"])] = str(sample.get("completion") or "")
+    return samples
+
+
+def _error_evaluation(result: str, exc: Exception) -> dict[str, Any]:
+    return {"passed": False, "result": result, "stdout": "", "stderr": f"{type(exc).__name__}: {exc}"}
 
 
 def extract_completion(text: str) -> str:
@@ -175,6 +214,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output-dir", default="benchmarks/reports/humaneval")
     parser.add_argument("--model", default="deepseek-chat")
     parser.add_argument("--limit", type=int, default=1)
+    parser.add_argument("--resume", action="store_true", help="reuse existing samples.jsonl and append missing tasks")
     return parser.parse_args(argv)
 
 
@@ -184,7 +224,13 @@ def main(
 ) -> int:
     args = parse_args(argv)
     problems = load_humaneval_problems(args.dataset, limit=args.limit)
-    report = run_humaneval_subset(problems, args.output_dir, args.model, agent_factory=agent_factory)
+    report = run_humaneval_subset(
+        problems,
+        args.output_dir,
+        args.model,
+        agent_factory=agent_factory,
+        resume=args.resume,
+    )
     print(json.dumps({"pass@1": report["pass@1"], "passed": report["passed"], "total": report["total"]}))
     return 0 if report["passed"] == report["total"] else 1
 

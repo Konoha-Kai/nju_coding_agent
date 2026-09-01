@@ -154,6 +154,68 @@ def test_run_humaneval_subset_prefers_solution_file_over_final_message() -> None
     assert sample["completion"] == "    return a + b\n"
 
 
+def test_run_humaneval_subset_resume_reuses_existing_samples() -> None:
+    class FailingAgent:
+        def run(self, task: str):
+            raise AssertionError("agent should not be called for resumed task")
+
+    problem = HumanEvalProblem(
+        task_id="HumanEval/Resume",
+        prompt="def add(a, b):\n",
+        canonical_solution="    return a + b\n",
+        test="def check(candidate):\n    assert candidate(1, 2) == 3\n",
+        entry_point="add",
+    )
+    output_dir = Path("test_workspace") / "humaneval_resume"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "samples.jsonl").write_text(
+        json.dumps({"task_id": "HumanEval/Resume", "completion": "    return a + b\n"}) + "\n",
+        encoding="utf-8",
+    )
+
+    report = run_humaneval_subset(
+        problems=[problem],
+        output_dir=output_dir,
+        model_name="fake-model",
+        agent_factory=lambda workspace: FailingAgent(),
+        resume=True,
+    )
+
+    assert report["pass@1"] == 1.0
+    assert report["results"][0]["result"] == "passed"
+    assert report["results"][0]["source"] == "resumed_sample"
+    assert len((output_dir / "samples.jsonl").read_text(encoding="utf-8").splitlines()) == 1
+
+
+def test_run_humaneval_subset_records_agent_error_and_continues() -> None:
+    class RaisingAgent:
+        def run(self, task: str):
+            raise RuntimeError("api unavailable")
+
+    problem = HumanEvalProblem(
+        task_id="HumanEval/Error",
+        prompt="def add(a, b):\n",
+        canonical_solution="    return a + b\n",
+        test="def check(candidate):\n    assert candidate(1, 2) == 3\n",
+        entry_point="add",
+    )
+    output_dir = Path("test_workspace") / "humaneval_agent_error"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    report = run_humaneval_subset(
+        problems=[problem],
+        output_dir=output_dir,
+        model_name="fake-model",
+        agent_factory=lambda workspace: RaisingAgent(),
+    )
+
+    assert report["pass@1"] == 0.0
+    assert report["results"][0]["result"] == "agent_error"
+    assert "api unavailable" in report["results"][0]["stderr"]
+    sample = json.loads((output_dir / "samples.jsonl").read_text(encoding="utf-8").strip())
+    assert sample == {"task_id": "HumanEval/Error", "completion": ""}
+
+
 def test_main_runs_subset_with_default_dataset() -> None:
     dataset_path = Path("test_workspace") / "humaneval_main_dataset.jsonl.gz"
     dataset_path.parent.mkdir(parents=True, exist_ok=True)
