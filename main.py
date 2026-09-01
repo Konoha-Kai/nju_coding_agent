@@ -9,6 +9,8 @@ from agent.bootstrap import build_default_registry
 from agent.logger import SessionLogger
 from agent.model_client import ModelClient
 
+ChatHistory = list[tuple[str, str]]
+
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Minimal NJU coding agent harness")
@@ -19,6 +21,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--log-dir", default="logs", help="Directory for JSONL session logs")
     parser.add_argument("--session-id", help="Stable session id for log filename")
     parser.add_argument("--verbose", action="store_true", help="Print agent loop events while running")
+    parser.add_argument("--chat", action="store_true", help="Run an interactive user/agent chat session")
     return parser.parse_args(argv)
 
 
@@ -63,23 +66,74 @@ def print_verbose_event(event: str, data: dict) -> None:
     print(format_verbose_event(event, data), flush=True)
 
 
+def build_chat_task(history: ChatHistory, user_message: str) -> str:
+    if not history:
+        return user_message
+
+    previous_turns = "\n\n".join(
+        f"User: {user_text}\nAgent: {agent_text}"
+        for user_text, agent_text in history
+    )
+    return (
+        "Conversation so far:\n"
+        f"{previous_turns}\n\n"
+        "Latest user request:\n"
+        f"{user_message}"
+    )
+
+
+def build_agent(args: argparse.Namespace, workspace: Path, session_id: str | None = None) -> Agent:
+    return Agent(
+        model_client=ModelClient(),
+        workspace=workspace,
+        tool_registry=build_default_registry(workspace),
+        logger=build_session_logger(workspace, args.log_dir, session_id or args.session_id),
+        event_handler=print_verbose_event if args.verbose else None,
+        max_steps=args.max_steps,
+        max_errors=args.max_errors,
+    )
+
+
+def run_chat_session(
+    agent: Agent,
+    input_func=input,
+    output_func=print,
+) -> int:
+    history: ChatHistory = []
+    output_func("Interactive chat mode. Type exit or quit to stop.")
+
+    while True:
+        try:
+            user_message = input_func("You: ").strip()
+        except EOFError:
+            output_func("Bye.")
+            return 0
+
+        if not user_message:
+            continue
+        if user_message.lower() in {"exit", "quit"}:
+            output_func("Bye.")
+            return 0
+
+        result = agent.run(build_chat_task(history, user_message))
+        output_func(f"Agent: {result.final_message}")
+        history.append((user_message, result.final_message))
+
+
 def main() -> int:
     args = parse_args()
+    workspace = Path(args.workspace)
+
+    if args.chat:
+        session_id = args.session_id or "chat"
+        return run_chat_session(build_agent(args, workspace, session_id=session_id))
+
     task = args.task or input("Task: ").strip()
     if not task:
         print("No task provided.")
         return 1
 
-    workspace = Path(args.workspace)
-    agent = Agent(
-        model_client=ModelClient(),
-        workspace=workspace,
-        tool_registry=build_default_registry(workspace),
-        logger=build_session_logger(workspace, args.log_dir, args.session_id),
-        event_handler=print_verbose_event if args.verbose else None,
-        max_steps=args.max_steps,
-        max_errors=args.max_errors,
-    )
+    agent = build_agent(args, workspace)
     result = agent.run(task)
     print(result.final_message)
     return 0 if result.success else 1

@@ -157,7 +157,7 @@
 - 调研 SWE-bench，确认官方复现依赖 Docker/容器环境和较重工程环境；当前版本已删除 SWE-bench adapter、数据文件、测试脚本和 evaluator 封装，仅保留复现困难记录。
 
 验证：
-- `C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest` 通过，70 passed。
+- `C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest` 通过，73 passed。
 - HumanEval 完整实验报告位于 `开发文档/10_HumanEval完整实验报告.md`。
 
 状态：Done。
@@ -191,7 +191,7 @@
 - 已编写 `开发文档/11_演示脚本.md`。
 - 已编写 `开发文档/12_交付检查清单.md`。
 - 已补充 `--verbose` 实时事件输出，运行时展示模型轮次、工具调用、工具结果和最终状态。
-- 已验证全量测试：70 passed。
+- 已验证全量测试：73 passed。
 - 已验证 Sprint4 Agent demo：`--verbose` 运行成功，demo tests 2 passed。
 - 已完成 API key 文档扫描：无命中。
 

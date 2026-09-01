@@ -59,6 +59,7 @@ Agent 运行流程：
 - Agent 支持连续工具错误阈值，避免无限循环。
 - 每次运行可生成 JSONL 会话日志，便于复盘。
 - CLI 支持 `--verbose`，运行时实时打印模型轮次、工具调用、工具结果和最终状态。
+- CLI 支持 `--chat`，可以在终端里进行“用户一句、Agent 一句”的多轮交互。每轮都会保留前面的问答摘要，并继续使用同一套本地工具和安全策略。
 
 ### HumanEval 轻量 Benchmark
 
@@ -182,6 +183,21 @@ $env:PYTHONIOENCODING='utf-8'
 C:\Users\23639\.conda\envs\nju\python.exe -s main.py "Read demo_workspace/calculator.py, run python -m pytest demo_workspace/tests -v, and summarize the result." --workspace . --max-steps 8 --verbose
 ```
 
+交互式对话：
+
+```powershell
+$env:PYTHONIOENCODING='utf-8'
+C:\Users\23639\.conda\envs\nju\python.exe -s main.py --chat --workspace . --max-steps 8 --verbose
+```
+
+进入后可以这样输入：
+
+```text
+You: 先看一下 demo_workspace/calculator.py 做了什么
+You: 再帮我运行 demo_workspace/tests，并总结测试结果
+You: exit
+```
+
 ## 运行测试
 
 ```powershell
@@ -191,7 +207,7 @@ C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest
 当前验证结果：
 
 ```text
-70 passed
+73 passed
 ```
 
 ## 开发文档

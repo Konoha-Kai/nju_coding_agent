@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from main import build_session_logger, format_verbose_event, parse_args
+from main import build_chat_task, format_verbose_event, parse_args, run_chat_session
 
 
 def test_parse_args_accepts_logging_options() -> None:
@@ -17,6 +17,7 @@ def test_parse_args_accepts_logging_options() -> None:
             "--session-id",
             "abc",
             "--verbose",
+            "--chat",
             "do task",
         ]
     )
@@ -27,10 +28,13 @@ def test_parse_args_accepts_logging_options() -> None:
     assert args.log_dir == "logs"
     assert args.session_id == "abc"
     assert args.verbose is True
+    assert args.chat is True
     assert args.task == "do task"
 
 
 def test_build_session_logger_uses_workspace_relative_log_dir() -> None:
+    from main import build_session_logger
+
     logger = build_session_logger(
         workspace=Path("project"),
         log_dir="logs",
@@ -59,3 +63,55 @@ def test_format_verbose_event_for_tool_result_truncates_output() -> None:
     assert line.startswith("[step 2] tool read_file ok=True ")
     assert line.endswith("...")
     assert len(line) < 120
+
+
+def test_build_chat_task_includes_previous_turns() -> None:
+    task = build_chat_task(
+        history=[("first question", "first answer")],
+        user_message="second question",
+    )
+
+    assert "Conversation so far" in task
+    assert "User: first question" in task
+    assert "Agent: first answer" in task
+    assert "Latest user request:\nsecond question" in task
+
+
+def test_build_chat_task_returns_first_message_without_history() -> None:
+    assert build_chat_task([], "hello") == "hello"
+
+
+def test_run_chat_session_keeps_turn_history_and_stops_on_exit() -> None:
+    class FakeResult:
+        def __init__(self, final_message: str) -> None:
+            self.final_message = final_message
+
+    class FakeAgent:
+        def __init__(self) -> None:
+            self.tasks: list[str] = []
+
+        def run(self, task: str) -> FakeResult:
+            self.tasks.append(task)
+            return FakeResult(f"answer {len(self.tasks)}")
+
+    agent = FakeAgent()
+    inputs = iter(["hello", "what did I ask?", "exit"])
+    outputs: list[str] = []
+
+    code = run_chat_session(
+        agent=agent,
+        input_func=lambda prompt: next(inputs),
+        output_func=outputs.append,
+    )
+
+    assert code == 0
+    assert agent.tasks[0] == "hello"
+    assert "User: hello" in agent.tasks[1]
+    assert "Agent: answer 1" in agent.tasks[1]
+    assert "Latest user request:\nwhat did I ask?" in agent.tasks[1]
+    assert outputs == [
+        "Interactive chat mode. Type exit or quit to stop.",
+        "Agent: answer 1",
+        "Agent: answer 2",
+        "Bye.",
+    ]
