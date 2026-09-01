@@ -146,6 +146,35 @@ def test_run_command_rejects_network_download_by_default() -> None:
     assert result.metadata["reason"] == "network_download"
 
 
+def test_run_command_rejects_parent_path_access_by_default() -> None:
+    workspace = make_workspace()
+
+    try:
+        result = run_command_tool(workspace).handler({"command": "type ..\\secret.txt"})
+    finally:
+        remove_workspace(workspace)
+
+    assert not result.ok
+    assert "outside workspace" in result.content
+    assert result.metadata["reason"] == "outside_workspace_path"
+
+
+def test_run_command_rejects_absolute_path_outside_workspace_by_default() -> None:
+    workspace = make_workspace()
+    outside = workspace.parent / f"outside_{uuid.uuid4().hex}.txt"
+
+    try:
+        result = run_command_tool(workspace).handler(
+            {"command": f'type "{outside.resolve()}"'}
+        )
+    finally:
+        remove_workspace(workspace)
+
+    assert not result.ok
+    assert "outside workspace" in result.content
+    assert result.metadata["reason"] == "outside_workspace_path"
+
+
 def test_run_command_allows_dangerous_command_when_explicitly_enabled() -> None:
     workspace = make_workspace()
     command = f'"{sys.executable}" -c "print(\'safe execution path\')"'

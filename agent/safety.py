@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import re
+import shlex
 
 
 @dataclass(frozen=True)
@@ -43,7 +45,12 @@ class CommandSafetyDecision:
 
 
 class CommandSafetyPolicy:
-    def evaluate(self, command: str, allow_dangerous: bool = False) -> CommandSafetyDecision:
+    def evaluate(
+        self,
+        command: str,
+        allow_dangerous: bool = False,
+        workspace: Path | str | None = None,
+    ) -> CommandSafetyDecision:
         if allow_dangerous:
             return CommandSafetyDecision(True)
 
@@ -60,6 +67,10 @@ class CommandSafetyPolicy:
             return self._blocked("dependency_install")
         if self._contains_any(tokens, {"curl", "wget", "iwr", "invoke-webrequest"}):
             return self._blocked("network_download")
+        if workspace is not None:
+            path_decision = self._evaluate_workspace_paths(command, Path(workspace).resolve())
+            if not path_decision.allowed:
+                return path_decision
 
         return CommandSafetyDecision(True)
 
@@ -90,3 +101,50 @@ class CommandSafetyPolicy:
                 if tuple(cleaned[index : index + size]) == pattern:
                     return True
         return False
+
+    def _evaluate_workspace_paths(self, command: str, workspace: Path) -> CommandSafetyDecision:
+        for index, token in enumerate(_split_command_tokens(command)):
+            cleaned = token.strip().strip("\"'")
+            if not cleaned or cleaned.startswith("-"):
+                continue
+            if index == 0 and _looks_like_executable_path(cleaned):
+                continue
+            if _looks_like_path_argument(cleaned) and not _is_path_inside_workspace(cleaned, workspace):
+                return CommandSafetyDecision(
+                    allowed=False,
+                    reason="outside_workspace_path",
+                    message=f"Blocked command path outside workspace: {cleaned}",
+                )
+        return CommandSafetyDecision(True)
+
+
+def _split_command_tokens(command: str) -> list[str]:
+    try:
+        return shlex.split(command, posix=False)
+    except ValueError:
+        return command.split()
+
+
+def _looks_like_path_argument(token: str) -> bool:
+    if ".." in Path(token).parts:
+        return True
+    if re.match(r"^[A-Za-z]:[\\/]", token):
+        return True
+    if token.startswith(("/", "\\")):
+        return True
+    return "\\" in token or "/" in token
+
+
+def _looks_like_executable_path(token: str) -> bool:
+    lowered = token.lower()
+    return _looks_like_path_argument(token) and lowered.endswith((".exe", ".bat", ".cmd", ".ps1"))
+
+
+def _is_path_inside_workspace(token: str, workspace: Path) -> bool:
+    path = Path(token)
+    candidate = path if path.is_absolute() else workspace / path
+    try:
+        candidate.resolve().relative_to(workspace)
+    except (OSError, ValueError):
+        return False
+    return True

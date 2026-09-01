@@ -19,7 +19,7 @@ pip install -r requirements.txt
 
 运行测试：
 C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest
-当前结果：73 passed
+当前结果：75 passed
 
 运行 Agent：
 C:\Users\23639\.conda\envs\nju\python.exe -s main.py "Read demo_workspace/calculator.py, run python -m pytest demo_workspace/tests -v, and summarize." --workspace . --max-steps 8 --verbose

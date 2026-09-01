@@ -54,7 +54,11 @@ class ShellTools:
         timeout_seconds = int(arguments.get("timeout_seconds", 30))
         max_output_chars = int(arguments.get("max_output_chars", 12000))
         allow_dangerous = bool(arguments.get("allow_dangerous", False))
-        decision = self.command_policy.evaluate(command, allow_dangerous=allow_dangerous)
+        decision = self.command_policy.evaluate(
+            command,
+            allow_dangerous=allow_dangerous,
+            workspace=self.workspace,
+        )
         if not decision.allowed:
             return ToolResult(
                 ok=False,
