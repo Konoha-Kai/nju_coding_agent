@@ -1,15 +1,11 @@
 # Public Coding Agent Benchmarks
 
-This project should use public benchmarks instead of self-authored benchmark tasks.
+This project uses public benchmarks instead of self-authored benchmark tasks.
 
-Sprint 3 uses this directory only for benchmark integration notes, selected public instance IDs, generated reports, and adapter scripts. It must not define private benchmark tasks as the primary scoring set.
+Current Sprint 3 benchmark:
 
-Recommended benchmark order:
+1. HumanEval: lightweight public Python function-completion benchmark; runs without Docker.
 
-1. SWE-bench Lite: primary evaluation target for early iterations.
-2. SWE-bench Verified: stronger evaluation target after the harness is stable.
-3. Terminal-Bench: optional terminal-oriented agent evaluation.
-4. LiveCodeBench: optional code generation, self-repair, code execution, and test output prediction baseline.
-5. HumanEval / MBPP: optional small-function generation baselines, not enough to prove full coding-agent ability.
+SWE-bench was investigated because it better represents repository-level issue fixing, but it is not retained in the current project implementation. Its official evaluation is Docker-based and difficult to reproduce reliably on the current machine.
 
-Local demo workspaces may still be used for smoke tests, but they should be clearly labeled as demos rather than benchmark datasets.
+Local demo workspaces may still be used for smoke tests, but they are labeled as demos rather than benchmark datasets.

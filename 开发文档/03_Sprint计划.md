@@ -117,29 +117,27 @@
 
 目标：
 - 将当前通用 harness 适配成更像真实 coding agent 的系统。
-- 接入公开 coding agent benchmark，优先使用 SWE-bench Lite，验证读代码、定位问题、修改代码、运行测试和基于失败结果迭代修复的闭环能力。
+- 使用公开、轻量、可直接复现的 HumanEval 数据集验证代码生成和执行评测能力。
 - 在 coding 场景下补齐必要的安全边界和质量保障，避免 agent 在执行本地代码任务时越界访问、误执行高风险命令或生成不可复盘结果。
+- 调研 SWE-bench，但不把它作为当前版本交付内容；仅记录其官方复现依赖 Docker/容器环境，复现成本较高。
 
 任务：
-- 选定公开 benchmark：SWE-bench Lite 作为主目标，SWE-bench Verified 作为增强目标。
-- 调研并记录 SWE-bench、Terminal-Bench、LiveCodeBench、HumanEval、MBPP 的适用范围和本项目取舍。
-- 基于公开 SWE-bench Lite instance id 选择一个小规模固定子集，不自建 benchmark 数据集。
-- 实现或整理一套完整工作测试流程：准备公开 benchmark workspace、运行 agent、检查 patch、运行官方 evaluator、检查日志、记录评分。
-- 实现 SWE-bench 输入适配：将公开 issue、repo、base commit 转换为 agent 可执行任务。
-- 实现 SWE-bench 输出适配：将 agent 产生的 diff 转换为官方 predictions JSONL。
+- 接入 OpenAI HumanEval 公开数据集，不自建 benchmark 数据集。
+- 实现 HumanEval runner：加载公开数据、构造 agent 任务、收集 completion、执行测试、生成 `samples.jsonl` 和 `report.json`。
+- 支持 HumanEval 断点续跑，长实验中断后可复用已有样本继续执行。
 - 增加 coding 场景执行摘要：列出修改文件、执行命令、测试结果、失败重试次数和最终状态。
 - 实现 workspace 路径边界检查，阻止路径穿越和 workspace 外文件访问。
 - 实现危险命令识别和确认机制，拦截删除、移动、安装依赖、网络下载等高风险命令。
 - 完善命令超时、输出截断和失败处理，让测试失败信息能稳定回填给模型。
 - 增加错误阈值终止条件，避免 coding 任务无限循环。
-- 增加 benchmark、safety、filesystem、shell、tool parser 单元测试。
+- 增加 HumanEval、safety、filesystem、shell、tool parser 单元测试。
 - 检查日志、README、视频脚本中不泄露 API key。
 
 验收：
-- 至少 1 个 SWE-bench Lite 公开 instance 能完成从任务读取到 patch 输出的端到端流程。
-- 固定 5-10 个 SWE-bench Lite 公开 instance id 作为小规模评估子集。
-- benchmark 结果可以从 predictions JSONL、JSONL session log 和 Git diff 中复盘。
-- agent 能在公开 benchmark 或公开 instance 派生的 workspace 中完成“读代码 -> 修改代码 -> 运行测试 -> 根据失败继续修复 -> 最终总结”的闭环。
+- HumanEval 公开数据集可直接从本地运行。
+- 完成 HumanEval 164 题完整实验，并产出可复盘报告。
+- benchmark 结果可以从 `samples.jsonl`、`report.json` 和 JSONL session log 中复盘。
+- agent 能在公开 benchmark 派生的 workspace 中完成“理解题目 -> 写入代码 -> 运行测试 -> 记录结果”的闭环。
 - 越界路径被拒绝。
 - 高风险命令被拦截或要求确认。
 - 超时命令被终止，失败信息清晰返回。
@@ -148,29 +146,21 @@
 - `.env` 和敏感日志不会进入 Git。
 
 已完成：
-- 下载官方 SWE-bench 仓库到 `benchmarks/vendor/SWE-bench`，并将 vendor 目录加入 Git ignore。
-- 下载 SWE-bench Lite dev/test parquet 公共数据到 `benchmarks/data/SWE-bench_Lite/`。
-- 安装官方 `swebench` CLI 到 `nju` 环境。
-- 实现 `benchmarks/swebench_adapter.py`，支持 instance -> agent task、Git diff -> predictions JSONL。
-- 实现 `benchmarks/swebench_runner.py`，支持 prepared workspace 单实例运行和 report 输出。
-- 实现 `benchmarks/swebench_evaluator.py`，封装官方 evaluator 命令和 gold validation dry-run。
-- 实现 `benchmarks/swebench_dataset.py`，支持读取 SWE-bench Lite parquet 和导出 instance JSON。
-- 建立 `benchmarks/selected_swebench_lite_dev_ids.txt` 固定 10 个公开 dev instance id。
+- 下载 OpenAI HumanEval 公开数据到 `benchmarks/data/HumanEval/HumanEval.jsonl.gz`。
+- 实现 `benchmarks/humaneval_runner.py`，支持 HumanEval 加载、agent 运行、样本输出和报告生成。
+- 实现 HumanEval 断点续跑和单题异常兜底。
+- 完成 HumanEval 164 题完整实验：159/164 通过，pass@1 = 96.95%。
 - 实现 workspace 路径边界检查。
 - 实现危险 shell 命令默认拦截。
 - 实现 shell 输出截断。
 - 实现 agent 连续工具错误阈值。
-
-环境限制：
-- 本机当前未检测到 Docker，因此不能在本机完成官方容器评测。
-- 当前已完成官方数据下载、CLI 安装、adapter、runner、predictions JSONL 输出和 evaluator dry-run。
+- 调研 SWE-bench，确认官方复现依赖 Docker/容器环境和较重工程环境；当前版本已删除 SWE-bench adapter、数据文件、测试脚本和 evaluator 封装，仅保留复现困难记录。
 
 验证：
-- `C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest` 通过，72 passed。
-- `C:\Users\23639\.conda\envs\nju\Scripts\swebench.exe --help` 可用。
-- evaluator dry-run 输出 `swebench eval verified --gold -i sympy__sympy-20590 --run-id validate-gold`。
+- `C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest` 通过，63 passed。
+- HumanEval 完整实验报告位于 `开发文档/10_HumanEval完整实验报告.md`。
 
-状态：Done，真实官方 Docker 评测待 Docker 环境可用后运行。
+状态：Done。
 
 ## Sprint 4：演示与交付
 

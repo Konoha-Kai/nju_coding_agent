@@ -6,7 +6,7 @@ Date: 2026-09-01
 
 Use the public OpenAI HumanEval dataset as a lightweight coding-agent benchmark to evaluate the current `nju_ai_coding_agent` implementation without Docker.
 
-This benchmark is function-level code generation. It is lighter than SWE-bench and can run directly from the local dataset, but it does not measure repository-level issue fixing, dependency handling, or multi-file patch quality.
+This benchmark is function-level code generation and can run directly from the local dataset without Docker. It does not measure repository-level issue fixing, dependency handling, or multi-file patch quality.
 
 ## Environment
 
@@ -60,3 +60,4 @@ The current coding agent can complete most standalone Python function tasks unde
 
 The remaining gap is mostly in coding-task adaptation quality rather than infrastructure failure: all failed tasks produced executable candidates but failed hidden assertions. Sprint3 should focus on coding-specific review loops, stronger self-testing, edge-case extraction from prompts, and better use of local execution feedback before finalizing solutions.
 
+SWE-bench was considered for repository-level evaluation, but its official reproduction path is Docker-based and comparatively heavy. It is recorded as difficult to reproduce on the current machine and is not retained as submitted project code.

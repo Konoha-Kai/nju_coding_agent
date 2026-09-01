@@ -2,125 +2,52 @@
 
 ## Decision
 
-Use public benchmark datasets and baseline protocols instead of self-authored benchmark tasks.
+Use public benchmark datasets instead of self-authored benchmark tasks.
 
-Primary target:
+Current retained benchmark:
 
-- SWE-bench Lite
+- HumanEval
 
-Secondary targets:
+Benchmarks investigated but not retained in the current implementation:
 
-- SWE-bench Verified
+- SWE-bench / SWE-bench Lite / SWE-bench Verified
 - Terminal-Bench
 - LiveCodeBench
-- HumanEval
 - MBPP
 
-Lightweight smoke target:
-
-- HumanEval
-
-## Public Sources
-
-| Benchmark | Official Source | What It Measures |
-| --- | --- | --- |
-| SWE-bench | https://github.com/SWE-bench/SWE-bench | Real GitHub issue resolution with repository tests |
-| SWE-bench datasets | https://huggingface.co/princeton-nlp | Public SWE-bench, Lite, and Verified datasets |
-| Terminal-Bench | https://github.com/laude-institute/terminal-bench | End-to-end tasks in terminal environments |
-| LiveCodeBench | https://github.com/LiveCodeBench/LiveCodeBench | Code generation, self-repair, code execution, test output prediction |
-| HumanEval | https://github.com/openai/human-eval | Python function completion |
-| MBPP | https://github.com/google-research/google-research/tree/master/mbpp | Basic Python programming problems with tests |
-
-## Local Reference Download
-
-The official SWE-bench repository has been cloned locally for Sprint 3 reference:
-
-```text
-benchmarks/vendor/SWE-bench
-```
-
-The `benchmarks/vendor/` directory is intentionally ignored by Git. The project should commit only its own adapter scripts, tests, selected public instance IDs, and reports, not a vendored copy of the upstream SWE-bench repository.
-
-## Why SWE-bench Lite First
-
-SWE-bench evaluates whether an agent can resolve real GitHub issues by producing patches against real repositories. It matches this project's goal better than single-function code generation benchmarks because the agent must inspect a repository, edit files, and rely on tests for verification.
-
-SWE-bench Lite is smaller than the full set, so it is more practical for development and assessment demos. Once the adapter works, SWE-bench Verified can be used as a more credible benchmark subset.
-
-## Benchmark Roles
+## Current Benchmark Role
 
 | Benchmark | Role in This Project | Notes |
 | --- | --- | --- |
-| SWE-bench Lite | Main Sprint 3 benchmark | Real GitHub issue resolution; practical size for iteration |
-| SWE-bench Verified | Stronger final benchmark | Human-verified solvable subset |
-| Terminal-Bench | Optional agent benchmark | Tests terminal-based engineering tasks |
-| LiveCodeBench | Optional coding baseline | Useful for code generation, self-repair, code execution, test output prediction |
-| HumanEval | Optional simple baseline | Function completion only; not a full agent benchmark |
-| MBPP | Optional simple baseline | Basic Python programming tasks; not repository-level |
+| HumanEval | Current lightweight evaluation set | Public function-level Python tasks, no Docker required |
+| SWE-bench | Research note only | More realistic repository-level benchmark, but local reproduction is difficult |
+| Terminal-Bench | Optional future research | Terminal task benchmark, not integrated |
+| LiveCodeBench | Optional future research | Coding baseline, not integrated |
+| MBPP | Optional future research | Basic Python programming tasks, not integrated |
 
-## Sprint 3 Integration Plan
+## SWE-bench Reproduction Note
 
-1. Install or document SWE-bench dependencies separately from the core agent environment.
-2. Select a small public subset from SWE-bench Lite by public instance IDs.
-3. Implement an adapter that converts each benchmark instance into a natural-language task for `main.py`.
-4. Run the agent in the benchmark workspace.
-5. Collect generated patches as JSONL predictions.
-6. Evaluate patches with the official SWE-bench evaluator.
-7. Store reports under `benchmarks/reports/`.
+SWE-bench is a stronger benchmark for coding agents because it evaluates real repository issue fixing. However, the official evaluation path depends on Docker-compatible container execution, repository setup, dependency installation, and heavier machine/runtime requirements.
 
-Official evaluator command shape:
+On this machine, Docker was not available, so official resolved scoring could not be reproduced reliably. To keep the project lightweight and reproducible for the current assessment, SWE-bench code, local data, adapter tests, and evaluator wrappers have been removed. The project keeps only this note to explain why SWE-bench was not used as the submitted benchmark.
 
-```bash
-swebench eval SWE-bench/SWE-bench_Lite -p <predictions.jsonl> --run-id <run_id>
-```
+## HumanEval Usage
 
-The exact dataset argument should follow the installed SWE-bench version. The official README also documents aliases such as `verified` and supports HuggingFace dataset IDs.
-
-## Minimal Evaluation Output
-
-Each run should record:
-
-- benchmark name
-- dataset split
-- public instance id
-- model name
-- run id
-- final patch
-- resolved status
-- elapsed time
-- executed commands
-- changed files
-- log path
-
-## Baseline Strategy
-
-For a software-school assessment, the baseline does not need to beat public leaderboards. It should show:
-
-- the project uses a recognized public benchmark;
-- the harness can run at least one public instance end to end;
-- outputs are reproducible;
-- failures are analyzed honestly.
-
-Recommended first milestone:
+HumanEval is lightweight and can run directly from the local public dataset:
 
 ```text
-Run 1-3 SWE-bench Lite instances locally or document why local Docker evaluation is not available.
+benchmarks/data/HumanEval/HumanEval.jsonl.gz
 ```
 
-Lightweight fallback when Docker is unavailable:
+Full benchmark command:
 
-```text
-Run 1-10 HumanEval tasks with benchmarks.humaneval_runner.
+```powershell
+C:\Users\23639\.conda\envs\nju\python.exe -s -m benchmarks.humaneval_runner --limit 164 --output-dir benchmarks\reports\humaneval_full_deepseek --model deepseek-chat --resume
 ```
 
-Current HumanEval smoke result:
+Current full result:
 
 ```text
-HumanEval/0, deepseek-chat, pass@1=1.0, passed=1/1, agent steps=4
-```
-
-Recommended final milestone:
-
-```text
-Run a fixed 5-10 instance SWE-bench Lite subset and produce a small report.
+passed = 159 / 164
+pass@1 = 96.95%
 ```

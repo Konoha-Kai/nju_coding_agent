@@ -22,8 +22,8 @@
 | BL-103 | 作为开发者，我可以运行单元测试 | 覆盖 safety、filesystem、shell、parser | Done |
 | BL-104 | 作为用户，我能看到清晰最终总结 | 总结修改文件、执行命令、测试结果 | Partial：AgentResult 已追踪 changed_files/executed_commands，最终自然语言总结由模型生成 |
 | BL-105 | 作为评委，我能看到设计文档 | 开发文档持续更新 | In Progress |
-| BL-106 | 作为评委，我可以用公开 benchmark 验证 agent 能力 | 接入 SWE-bench Lite，并固定 5-10 个公开 instance id 作为小规模评估子集 | Done |
-| BL-107 | 作为开发者，我可以按完整工作流验收 coding agent | 文档化准备公开 benchmark workspace、运行 agent、生成 patch、运行官方 evaluator、检查日志、记录评分的流程 | Done：官方 Docker 评测需 Docker 环境 |
+| BL-106 | 作为评委，我可以用公开 benchmark 验证 agent 能力 | 接入公开 HumanEval 数据集并完成完整 164 题实验报告 | Done |
+| BL-107 | 作为开发者，我可以按完整工作流验收 coding agent | 文档化 HumanEval 数据准备、agent 运行、样本记录、自动评测和报告生成流程 | Done |
 
 ## P2：可选增强
 
@@ -36,4 +36,4 @@
 
 ## 当前说明
 
-Sprint 2 已补齐正式工具系统、DeepSeek/OpenAI 兼容 `tools/tool_calls`、文件工具、命令工具、JSONL 日志、demo workspace 和执行摘要追踪。Sprint 3 已接入 SWE-bench Lite 公开数据和官方 CLI，完成 adapter、runner、evaluator dry-run、路径安全、危险命令拦截、输出截断和错误阈值。真实官方 Docker 评测需要本机 Docker 环境。
+Sprint 2 已补齐正式工具系统、DeepSeek/OpenAI 兼容 `tools/tool_calls`、文件工具、命令工具、JSONL 日志、demo workspace 和执行摘要追踪。Sprint 3 当前保留 HumanEval 作为轻量公开 benchmark，已完成 164 题完整实验报告。SWE-bench 已调研，但官方复现依赖 Docker/容器环境，当前版本不保留实现代码和本地数据，仅记录复现较困难。
