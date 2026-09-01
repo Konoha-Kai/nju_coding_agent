@@ -17,8 +17,8 @@ def remove_workspace(path: Path) -> None:
         shutil.rmtree(path)
 
 
-def run_command_tool(workspace: Path):
-    tools = {tool.name: tool for tool in build_shell_tools(workspace)}
+def run_command_tool(workspace: Path, confirm_dangerous=None):
+    tools = {tool.name: tool for tool in build_shell_tools(workspace, confirm_dangerous=confirm_dangerous)}
     return tools["run_command"]
 
 
@@ -120,6 +120,49 @@ def test_run_command_rejects_dangerous_delete_by_default() -> None:
     assert still_exists is True
 
 
+def test_run_command_can_execute_dangerous_command_after_confirmation() -> None:
+    workspace = make_workspace()
+    target = workspace / "delete_me.txt"
+    target.write_text("delete me", encoding="utf-8")
+    confirmations: list[tuple[str, str]] = []
+
+    def confirm(command: str, reason: str) -> bool:
+        confirmations.append((command, reason))
+        return True
+
+    try:
+        result = run_command_tool(workspace, confirm_dangerous=confirm).handler(
+            {"command": "del delete_me.txt"}
+        )
+        still_exists = target.exists()
+    finally:
+        remove_workspace(workspace)
+
+    assert result.ok
+    assert still_exists is False
+    assert confirmations == [("del delete_me.txt", "delete_or_remove")]
+    assert result.metadata["confirmed_dangerous"] is True
+
+
+def test_run_command_does_not_execute_dangerous_command_when_confirmation_denied() -> None:
+    workspace = make_workspace()
+    target = workspace / "keep.txt"
+    target.write_text("keep", encoding="utf-8")
+
+    try:
+        result = run_command_tool(workspace, confirm_dangerous=lambda command, reason: False).handler(
+            {"command": "del keep.txt"}
+        )
+        still_exists = target.exists()
+    finally:
+        remove_workspace(workspace)
+
+    assert not result.ok
+    assert still_exists is True
+    assert "confirmation denied" in result.content
+    assert result.metadata["confirmed_dangerous"] is False
+
+
 def test_run_command_rejects_dependency_install_by_default() -> None:
     workspace = make_workspace()
 
@@ -191,6 +234,24 @@ def test_run_command_allows_dangerous_command_when_explicitly_enabled() -> None:
 
     assert result.ok
     assert "safe execution path" in result.content
+
+
+def test_run_command_still_rejects_outside_workspace_when_allow_dangerous_enabled() -> None:
+    workspace = make_workspace()
+
+    try:
+        result = run_command_tool(workspace).handler(
+            {
+                "command": "type ..\\secret.txt",
+                "allow_dangerous": True,
+            }
+        )
+    finally:
+        remove_workspace(workspace)
+
+    assert not result.ok
+    assert "outside workspace" in result.content
+    assert result.metadata["reason"] == "outside_workspace_path"
 
 
 def test_run_command_truncates_large_output() -> None:

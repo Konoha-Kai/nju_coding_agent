@@ -86,12 +86,21 @@ def build_agent(args: argparse.Namespace, workspace: Path, session_id: str | Non
     return Agent(
         model_client=ModelClient(),
         workspace=workspace,
-        tool_registry=build_default_registry(workspace),
+        tool_registry=build_default_registry(workspace, confirm_dangerous=confirm_dangerous_command),
         logger=build_session_logger(workspace, args.log_dir, session_id or args.session_id),
         event_handler=print_verbose_event if args.verbose else None,
         max_steps=args.max_steps,
         max_errors=args.max_errors,
     )
+
+
+def confirm_dangerous_command(command: str, reason: str) -> bool:
+    print(f"Dangerous command requested ({reason}): {command}")
+    try:
+        answer = input("Allow this command? Type yes to run: ").strip().lower()
+    except EOFError:
+        return False
+    return answer == "yes"
 
 
 def run_chat_session(

@@ -51,13 +51,17 @@ class CommandSafetyPolicy:
         allow_dangerous: bool = False,
         workspace: Path | str | None = None,
     ) -> CommandSafetyDecision:
-        if allow_dangerous:
-            return CommandSafetyDecision(True)
-
         normalized = command.strip().lower()
         tokens = normalized.replace(";", " ").replace("&&", " ").replace("||", " ").split()
         if not tokens:
             return CommandSafetyDecision(False, "empty_command", "Refusing to run empty command.")
+
+        if workspace is not None:
+            path_decision = self._evaluate_workspace_paths(command, Path(workspace).resolve())
+            if not path_decision.allowed:
+                return path_decision
+        if allow_dangerous:
+            return CommandSafetyDecision(True)
 
         if self._contains_any(tokens, {"rm", "del", "erase", "rmdir", "rd", "remove-item"}):
             return self._blocked("delete_or_remove")
@@ -67,10 +71,6 @@ class CommandSafetyPolicy:
             return self._blocked("dependency_install")
         if self._contains_any(tokens, {"curl", "wget", "iwr", "invoke-webrequest"}):
             return self._blocked("network_download")
-        if workspace is not None:
-            path_decision = self._evaluate_workspace_paths(command, Path(workspace).resolve())
-            if not path_decision.allowed:
-                return path_decision
 
         return CommandSafetyDecision(True)
 

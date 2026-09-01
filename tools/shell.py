@@ -2,14 +2,20 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from agent.safety import CommandSafetyPolicy
 from agent.tooling import ToolResult, ToolSpec
 
 
-def build_shell_tools(workspace: Path | str) -> list[ToolSpec]:
-    shell_tools = ShellTools(workspace)
+DangerousCommandConfirmation = Callable[[str, str], bool]
+
+
+def build_shell_tools(
+    workspace: Path | str,
+    confirm_dangerous: DangerousCommandConfirmation | None = None,
+) -> list[ToolSpec]:
+    shell_tools = ShellTools(workspace, confirm_dangerous=confirm_dangerous)
     return [
         ToolSpec(
             name="run_command",
@@ -45,9 +51,14 @@ def build_shell_tools(workspace: Path | str) -> list[ToolSpec]:
 
 
 class ShellTools:
-    def __init__(self, workspace: Path | str) -> None:
+    def __init__(
+        self,
+        workspace: Path | str,
+        confirm_dangerous: DangerousCommandConfirmation | None = None,
+    ) -> None:
         self.workspace = Path(workspace).resolve()
         self.command_policy = CommandSafetyPolicy()
+        self.confirm_dangerous = confirm_dangerous
 
     def run_command(self, arguments: dict[str, Any]) -> ToolResult:
         command = str(arguments["command"])
@@ -60,6 +71,26 @@ class ShellTools:
             workspace=self.workspace,
         )
         if not decision.allowed:
+            if self._can_confirm_dangerous(decision.reason):
+                if self.confirm_dangerous and self.confirm_dangerous(command, decision.reason):
+                    return self._execute_command(
+                        command=command,
+                        timeout_seconds=timeout_seconds,
+                        max_output_chars=max_output_chars,
+                        confirmed_dangerous=True,
+                    )
+                return ToolResult(
+                    ok=False,
+                    content=f"dangerous command blocked: confirmation denied for {decision.reason}",
+                    metadata={
+                        "command": command,
+                        "blocked": True,
+                        "reason": decision.reason,
+                        "confirmed_dangerous": False,
+                        "timed_out": False,
+                        "exit_code": None,
+                    },
+                )
             return ToolResult(
                 ok=False,
                 content=decision.message,
@@ -72,6 +103,28 @@ class ShellTools:
                 },
             )
 
+        return self._execute_command(
+            command=command,
+            timeout_seconds=timeout_seconds,
+            max_output_chars=max_output_chars,
+            confirmed_dangerous=allow_dangerous,
+        )
+
+    def _can_confirm_dangerous(self, reason: str) -> bool:
+        return reason in {
+            "delete_or_remove",
+            "move_or_rename",
+            "dependency_install",
+            "network_download",
+        }
+
+    def _execute_command(
+        self,
+        command: str,
+        timeout_seconds: int,
+        max_output_chars: int,
+        confirmed_dangerous: bool = False,
+    ) -> ToolResult:
         try:
             completed = subprocess.run(
                 command,
@@ -100,6 +153,7 @@ class ShellTools:
                     "timed_out": True,
                     "exit_code": None,
                     "truncated": truncated,
+                    "confirmed_dangerous": confirmed_dangerous,
                 },
             )
 
@@ -124,6 +178,7 @@ class ShellTools:
                 "timed_out": False,
                 "exit_code": completed.returncode,
                 "truncated": truncated,
+                "confirmed_dangerous": confirmed_dangerous,
             },
         )
 

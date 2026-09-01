@@ -127,7 +127,7 @@
 - 支持 HumanEval 断点续跑，长实验中断后可复用已有样本继续执行。
 - 增加 coding 场景执行摘要：列出修改文件、执行命令、测试结果、失败重试次数和最终状态。
 - 实现 workspace 路径边界检查，阻止路径穿越和 workspace 外文件访问。
-- 实现危险命令识别和确认机制，拦截删除、移动、安装依赖、网络下载等高风险命令。
+- 实现危险命令识别和确认机制，删除、移动、安装依赖、网络下载等高风险命令需要用户确认后才执行。
 - 完善命令超时、输出截断和失败处理，让测试失败信息能稳定回填给模型。
 - 增加错误阈值终止条件，避免 coding 任务无限循环。
 - 增加 HumanEval、safety、filesystem、shell、tool parser 单元测试。
@@ -157,7 +157,7 @@
 - 调研 SWE-bench，确认官方复现依赖 Docker/容器环境和较重工程环境；当前版本已删除 SWE-bench adapter、数据文件、测试脚本和 evaluator 封装，仅保留复现困难记录。
 
 验证：
-- `C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest` 通过，75 passed。
+- `C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest` 通过，78 passed。
 - HumanEval 完整实验报告位于 `开发文档/10_HumanEval完整实验报告.md`。
 
 状态：Done。
@@ -191,7 +191,7 @@
 - 已编写 `开发文档/11_演示脚本.md`。
 - 已编写 `开发文档/12_交付检查清单.md`。
 - 已补充 `--verbose` 实时事件输出，运行时展示模型轮次、工具调用、工具结果和最终状态。
-- 已验证全量测试：75 passed。
+- 已验证全量测试：78 passed。
 - 已验证 Sprint4 Agent demo：`--verbose` 运行成功，demo tests 2 passed。
 - 已完成 API key 文档扫描：无命中。
 
