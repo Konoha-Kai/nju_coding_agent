@@ -39,6 +39,7 @@ class ModelClient:
         model: str | None = None,
         transport: Transport | None = None,
         timeout_seconds: int = 60,
+        max_retries: int = 2,
     ) -> None:
         load_dotenv()
         self.api_key = api_key if api_key is not None else os.getenv("DEEPSEEK_API_KEY", "")
@@ -48,6 +49,7 @@ class ModelClient:
         self.model = model or os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
         self.transport = transport or _post_json
         self.timeout_seconds = timeout_seconds
+        self.max_retries = max_retries
 
     def chat(
         self,
@@ -64,16 +66,22 @@ class ModelClient:
             payload["tools"] = tools
             payload["tool_choice"] = tool_choice
 
-        response = self.transport(
-            f"{self.base_url}/chat/completions",
-            payload,
-            {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-            self.timeout_seconds,
-        )
+        response = self._send_with_retries(payload)
         return self._parse_response(response)
+
+    def _send_with_retries(self, payload: dict[str, Any]) -> dict[str, Any]:
+        url = f"{self.base_url}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        last_error: Exception | None = None
+        for _ in range(self.max_retries + 1):
+            try:
+                return self.transport(url, payload, headers, self.timeout_seconds)
+            except Exception as exc:
+                last_error = exc
+        raise ModelClientError(f"model API request failed after retries: {last_error}") from last_error
 
     def _parse_response(self, response: dict[str, Any]) -> ModelReply:
         choices = response.get("choices")
@@ -119,6 +127,8 @@ def _post_json(url: str, payload: dict[str, Any], headers: dict[str, str], timeo
         raise ModelClientError(f"model API HTTP {exc.code}: {body}") from exc
     except urllib.error.URLError as exc:
         raise ModelClientError(f"model API request failed: {exc.reason}") from exc
+    except OSError as exc:
+        raise ModelClientError(f"model API request failed: {exc}") from exc
 
     try:
         parsed = json.loads(body)

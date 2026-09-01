@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 from agent.actions import LocalActions, parse_action
 from agent.context import ConversationContext
@@ -30,6 +31,7 @@ class Agent:
         max_errors: int = 3,
         tool_registry: ToolRegistry | None = None,
         logger: SessionLogger | None = None,
+        event_handler: Callable[[str, dict], None] | None = None,
     ) -> None:
         self.model_client = model_client
         self.actions = LocalActions(workspace)
@@ -37,6 +39,7 @@ class Agent:
         self.logger = logger
         self.max_steps = max_steps
         self.max_errors = max_errors
+        self.event_handler = event_handler
 
     def run(self, task: str) -> AgentResult:
         context = ConversationContext.start(task, use_tool_calls=bool(self.tool_registry))
@@ -48,7 +51,28 @@ class Agent:
 
         for step in range(1, self.max_steps + 1):
             tools = self.tool_registry.to_openai_tools() if self.tool_registry else None
-            reply = self.model_client.chat(context.messages, tools=tools)
+            try:
+                reply = self.model_client.chat(context.messages, tools=tools)
+            except Exception as exc:
+                agent_result = AgentResult(
+                    success=False,
+                    final_message=f"Model call failed at step {step}: {exc}",
+                    steps=step,
+                    observations=observations,
+                    changed_files=changed_files,
+                    executed_commands=executed_commands,
+                )
+                self._log(
+                    "agent_error",
+                    {
+                        "success": agent_result.success,
+                        "steps": agent_result.steps,
+                        "final_message": agent_result.final_message,
+                        "changed_files": agent_result.changed_files,
+                        "executed_commands": agent_result.executed_commands,
+                    },
+                )
+                return agent_result
             context.add_assistant(reply.content, tool_calls=reply.tool_calls)
             self._log(
                 "model_reply",
@@ -207,3 +231,5 @@ class Agent:
     def _log(self, event: str, data: dict) -> None:
         if self.logger:
             self.logger.log(event, data)
+        if self.event_handler:
+            self.event_handler(event, data)

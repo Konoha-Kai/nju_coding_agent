@@ -18,6 +18,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--max-errors", type=int, default=3, help="Maximum consecutive tool errors")
     parser.add_argument("--log-dir", default="logs", help="Directory for JSONL session logs")
     parser.add_argument("--session-id", help="Stable session id for log filename")
+    parser.add_argument("--verbose", action="store_true", help="Print agent loop events while running")
     return parser.parse_args(argv)
 
 
@@ -33,6 +34,35 @@ def build_session_logger(
     )
 
 
+def format_verbose_event(event: str, data: dict) -> str:
+    step = data.get("step")
+    prefix = f"[step {step}] " if step is not None else ""
+    if event == "user_task":
+        return "[task] started"
+    if event == "model_reply":
+        calls = data.get("tool_calls") or []
+        if calls:
+            names = ", ".join(str(call.get("name", "")) for call in calls)
+            return f"{prefix}model requested {names}"
+        return f"{prefix}model final reply"
+    if event == "tool_call":
+        return f"{prefix}tool {data.get('name')} {data.get('arguments', '{}')}"
+    if event == "tool_result":
+        content = str(data.get("content", "")).replace("\n", " ")
+        if len(content) > 64:
+            content = content[:61] + "..."
+        return f"{prefix}tool {data.get('name')} ok={data.get('ok')} {content}"
+    if event == "agent_finish":
+        return f"[final] success steps={data.get('steps')}"
+    if event == "agent_error":
+        return f"[error] {data.get('final_message', '')}"
+    return f"{prefix}{event}"
+
+
+def print_verbose_event(event: str, data: dict) -> None:
+    print(format_verbose_event(event, data), flush=True)
+
+
 def main() -> int:
     args = parse_args()
     task = args.task or input("Task: ").strip()
@@ -46,6 +76,7 @@ def main() -> int:
         workspace=workspace,
         tool_registry=build_default_registry(workspace),
         logger=build_session_logger(workspace, args.log_dir, args.session_id),
+        event_handler=print_verbose_event if args.verbose else None,
         max_steps=args.max_steps,
         max_errors=args.max_errors,
     )

@@ -103,3 +103,24 @@ def test_model_client_rejects_malformed_response() -> None:
 
     with pytest.raises(ModelClientError, match="missing choices"):
         client.chat([{"role": "user", "content": "hello"}])
+
+
+def test_model_client_retries_transport_errors() -> None:
+    calls = []
+
+    def flaky_transport(url: str, payload: dict, headers: dict[str, str], timeout_seconds: int) -> dict:
+        calls.append(payload)
+        if len(calls) == 1:
+            raise OSError("remote disconnected")
+        return make_response({"content": "done"})
+
+    client = ModelClient(
+        api_key="test-key",
+        transport=flaky_transport,
+        max_retries=1,
+    )
+
+    reply = client.chat([{"role": "user", "content": "hello"}])
+
+    assert reply.content == "done"
+    assert len(calls) == 2

@@ -7,8 +7,8 @@ Git 仓库：https://github.com/Konoha-Kai/nju_coding_agent
 1. 通过 CLI 接收编程任务。
 2. 调用 DeepSeek 模型进行多轮推理。
 3. 支持 list_files、read_file、write_file、run_command 工具。
-4. 支持路径边界、危险命令拦截、超时和输出截断。
-5. 生成 JSONL 日志。
+4. 支持路径边界、危险命令拦截、超时、截断和实时输出。
+5. 生成日志。
 6. 使用公开 HumanEval 数据集进行轻量 coding benchmark。
 
 环境：
@@ -19,10 +19,10 @@ pip install -r requirements.txt
 
 运行测试：
 C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest
-当前结果：65 passed
+当前结果：70 passed
 
 运行 Agent：
-C:\Users\23639\.conda\envs\nju\python.exe -s main.py "Read demo_workspace/calculator.py, run python -m pytest demo_workspace/tests -v, and summarize the result." --workspace . --max-steps 8
+C:\Users\23639\.conda\envs\nju\python.exe -s main.py "Read demo_workspace/calculator.py, run python -m pytest demo_workspace/tests -v, and summarize." --workspace . --max-steps 8 --verbose
 
 HumanEval：
 deepseek-chat 在公开 HumanEval 164 题中通过 159 题，pass@1 = 96.95%。报告位于 benchmarks/reports/humaneval_full_deepseek/。

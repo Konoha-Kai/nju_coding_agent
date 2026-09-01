@@ -342,3 +342,68 @@ def test_agent_logs_error_threshold_event() -> None:
 
     assert '"event": "agent_error"' in log_text
     assert "Reached max_errors=1" in log_text
+
+
+def test_agent_emits_events_to_handler() -> None:
+    workspace = make_workspace()
+    events: list[tuple[str, dict]] = []
+    model = FakeModelClient(
+        [
+            ModelReply(
+                content="",
+                tool_calls=[ToolCall(id="call_1", name="echo", arguments='{"text":"hello"}')],
+                finish_reason="tool_calls",
+            ),
+            ModelReply(content="done", finish_reason="stop"),
+        ]
+    )
+    agent = Agent(
+        model_client=model,
+        workspace=workspace,
+        tool_registry=make_registry(),
+        event_handler=lambda event, data: events.append((event, data)),
+        max_steps=3,
+    )
+
+    try:
+        result = agent.run("echo hello")
+    finally:
+        remove_workspace(workspace)
+
+    assert result.success
+    assert [event for event, _ in events] == [
+        "user_task",
+        "model_reply",
+        "tool_call",
+        "tool_result",
+        "model_reply",
+        "agent_finish",
+    ]
+    assert events[2][1]["name"] == "echo"
+    assert events[3][1]["ok"] is True
+
+
+def test_agent_returns_error_result_when_model_call_fails() -> None:
+    class FailingModelClient:
+        def chat(self, messages, tools=None):
+            raise RuntimeError("network down")
+
+    workspace = make_workspace()
+    events: list[tuple[str, dict]] = []
+    agent = Agent(
+        model_client=FailingModelClient(),
+        workspace=workspace,
+        tool_registry=make_registry(),
+        event_handler=lambda event, data: events.append((event, data)),
+        max_steps=3,
+    )
+
+    try:
+        result = agent.run("echo hello")
+    finally:
+        remove_workspace(workspace)
+
+    assert not result.success
+    assert result.steps == 1
+    assert "Model call failed" in result.final_message
+    assert events[-1][0] == "agent_error"
