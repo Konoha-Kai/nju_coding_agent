@@ -18,6 +18,11 @@ def test_parse_args_accepts_logging_options() -> None:
             "abc",
             "--verbose",
             "--chat",
+            "--compress-context",
+            "--context-max-messages",
+            "9",
+            "--context-keep-recent",
+            "4",
             "do task",
         ]
     )
@@ -29,6 +34,9 @@ def test_parse_args_accepts_logging_options() -> None:
     assert args.session_id == "abc"
     assert args.verbose is True
     assert args.chat is True
+    assert args.compress_context is True
+    assert args.context_max_messages == 9
+    assert args.context_keep_recent == 4
     assert args.task == "do task"
 
 
@@ -63,6 +71,15 @@ def test_format_verbose_event_for_tool_result_truncates_output() -> None:
     assert line.startswith("[step 2] tool read_file ok=True ")
     assert line.endswith("...")
     assert len(line) < 120
+
+
+def test_format_verbose_event_for_context_compression() -> None:
+    line = format_verbose_event(
+        "context_compressed",
+        {"step": 3, "original_count": 12, "compressed_count": 6},
+    )
+
+    assert line == "[step 3] context compressed 12 -> 6 messages"
 
 
 def test_build_chat_task_includes_previous_turns() -> None:

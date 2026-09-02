@@ -157,7 +157,7 @@
 - 调研 SWE-bench，确认官方复现依赖 Docker/容器环境和较重工程环境；当前版本已删除 SWE-bench adapter、数据文件、测试脚本和 evaluator 封装，仅保留复现困难记录。
 
 验证：
-- `C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest` 通过，78 passed。
+- `C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest` 通过，84 passed。
 - HumanEval 完整实验报告位于 `开发文档/10_HumanEval完整实验报告.md`。
 
 状态：Done。
@@ -191,8 +191,37 @@
 - 已编写 `开发文档/11_演示脚本.md`。
 - 已编写 `开发文档/12_交付检查清单.md`。
 - 已补充 `--verbose` 实时事件输出，运行时展示模型轮次、工具调用、工具结果和最终状态。
-- 已验证全量测试：78 passed。
+- 已验证全量测试：84 passed。
 - 已验证 Sprint4 Agent demo：`--verbose` 运行成功，demo tests 2 passed。
 - 已完成 API key 文档扫描：无命中。
+
+状态：Done
+
+## Sprint 5：特色功能 - 结构化上下文压缩
+
+目标：
+- 在长对话和多轮工具调用场景下控制上下文长度。
+- 不依赖额外 agent 框架或 SDK，不额外调用模型做摘要。
+- 用规则方式生成结构化 summary，保留 coding agent 最重要的工程状态。
+
+任务：
+- 新增 `agent/context_compressor.py`。
+- 支持配置 `max_messages`、`keep_recent_messages`、`max_summary_chars`。
+- 压缩时保留原始 system prompt 和最近若干条原始消息。
+- 将旧消息摘要为结构化状态，包括原始任务、工具调用、修改文件、执行命令、错误和最近工具结果。
+- 在 Agent 主循环中每轮模型调用前执行可选压缩。
+- CLI 增加 `--compress-context`、`--context-max-messages`、`--context-keep-recent`。
+- `--verbose` 增加 `context_compressed` 事件。
+- 按 TDD 增加压缩器、主循环和 CLI 测试。
+
+验收：
+- 短上下文不压缩。
+- 长上下文压缩后仍保留 system prompt、summary 和最近消息。
+- summary 能提取 changed files、commands、errors。
+- 压缩事件写入日志并能通过 verbose 展示。
+- 全量测试通过。
+
+验证：
+- `C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest` 通过，84 passed。
 
 状态：Done

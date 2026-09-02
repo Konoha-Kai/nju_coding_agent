@@ -7,6 +7,7 @@ from typing import Callable
 
 from agent.actions import LocalActions, parse_action
 from agent.context import ConversationContext
+from agent.context_compressor import ContextCompressor
 from agent.logger import SessionLogger
 from agent.model_client import ModelClient
 from agent.tooling import ToolRegistry, ToolResult
@@ -32,6 +33,7 @@ class Agent:
         tool_registry: ToolRegistry | None = None,
         logger: SessionLogger | None = None,
         event_handler: Callable[[str, dict], None] | None = None,
+        context_compressor: ContextCompressor | None = None,
     ) -> None:
         self.model_client = model_client
         self.actions = LocalActions(workspace)
@@ -40,6 +42,7 @@ class Agent:
         self.max_steps = max_steps
         self.max_errors = max_errors
         self.event_handler = event_handler
+        self.context_compressor = context_compressor
 
     def run(self, task: str) -> AgentResult:
         context = ConversationContext.start(task, use_tool_calls=bool(self.tool_registry))
@@ -51,6 +54,19 @@ class Agent:
 
         for step in range(1, self.max_steps + 1):
             tools = self.tool_registry.to_openai_tools() if self.tool_registry else None
+            if self.context_compressor:
+                compression = self.context_compressor.compress(context.messages)
+                if compression.compressed:
+                    context.messages = compression.messages
+                    self._log(
+                        "context_compressed",
+                        {
+                            "step": step,
+                            "original_count": compression.original_count,
+                            "compressed_count": compression.compressed_count,
+                            "summary": compression.summary,
+                        },
+                    )
             try:
                 reply = self.model_client.chat(context.messages, tools=tools)
             except Exception as exc:

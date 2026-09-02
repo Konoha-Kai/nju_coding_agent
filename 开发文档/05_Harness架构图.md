@@ -7,6 +7,7 @@ flowchart TB
     User[User / CLI] --> Main[main.py]
     Main --> Agent[Agent Loop]
     Agent --> Context[Context Manager]
+    Agent --> Compressor[Structured Context Compressor]
     Agent --> Registry[Tool Registry]
     Agent --> ModelClient[Model Client]
     Agent --> Logger[JSONL Logger]
@@ -36,6 +37,7 @@ sequenceDiagram
     participant CLI as CLI
     participant A as Agent Loop
     participant C as Context
+    participant X as Context Compressor
     participant M as Model Client
     participant D as DeepSeek API
     participant R as Tool Registry
@@ -45,6 +47,11 @@ sequenceDiagram
     U->>CLI: 输入编程任务
     CLI->>A: run(task)
     A->>C: 写入 system + user messages
+    opt 上下文超过阈值
+        A->>X: compress(messages)
+        X-->>A: system prompt + structured summary + recent messages
+        A->>L: 记录 context_compressed
+    end
     A->>M: chat(messages, tools)
     M->>D: POST /chat/completions
     D-->>M: assistant message / tool_calls
@@ -74,6 +81,7 @@ graph LR
     bootstrap --> filesystem[tools.filesystem]
     bootstrap --> shell[tools.shell]
     loop --> context[agent.context]
+    loop --> compressor[agent.context_compressor]
     loop --> model[agent.model_client]
     loop --> tooling[agent.tooling]
     loop --> logger[agent.logger]
@@ -83,7 +91,7 @@ graph LR
 
 ## 4. 设计说明
 
-- Sprint 2 Harness 负责把模型能力、正式工具系统、本地执行、上下文和 JSONL 日志组合成可复盘闭环。
+- Harness 负责把模型能力、正式工具系统、本地执行、上下文压缩和 JSONL 日志组合成可复盘闭环。
 - DeepSeek API 负责模型推理和 function tool call 决策。
 - 文件读写、命令执行、工具分发、日志和循环控制都在本地项目中自行实现。
-- 安全策略和危险命令审批将在 Sprint 3 加入。
+- 结构化上下文压缩不额外调用模型，而是用规则提取任务、工具调用、修改文件、命令、错误和最近工具结果。

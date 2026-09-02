@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from agent import Agent
 from agent.bootstrap import build_default_registry
+from agent.context_compressor import ContextCompressor
 from agent.logger import SessionLogger
 from agent.model_client import ModelClient
 
@@ -22,6 +23,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--session-id", help="Stable session id for log filename")
     parser.add_argument("--verbose", action="store_true", help="Print agent loop events while running")
     parser.add_argument("--chat", action="store_true", help="Run an interactive user/agent chat session")
+    parser.add_argument("--compress-context", action="store_true", help="Enable structured context compression")
+    parser.add_argument("--context-max-messages", type=int, default=14, help="Compress after this many messages")
+    parser.add_argument("--context-keep-recent", type=int, default=6, help="Raw recent messages kept after compression")
     return parser.parse_args(argv)
 
 
@@ -55,6 +59,11 @@ def format_verbose_event(event: str, data: dict) -> str:
         if len(content) > 64:
             content = content[:61] + "..."
         return f"{prefix}tool {data.get('name')} ok={data.get('ok')} {content}"
+    if event == "context_compressed":
+        return (
+            f"{prefix}context compressed "
+            f"{data.get('original_count')} -> {data.get('compressed_count')} messages"
+        )
     if event == "agent_finish":
         return f"[final] success steps={data.get('steps')}"
     if event == "agent_error":
@@ -83,6 +92,12 @@ def build_chat_task(history: ChatHistory, user_message: str) -> str:
 
 
 def build_agent(args: argparse.Namespace, workspace: Path, session_id: str | None = None) -> Agent:
+    compressor = None
+    if args.compress_context:
+        compressor = ContextCompressor(
+            max_messages=args.context_max_messages,
+            keep_recent_messages=args.context_keep_recent,
+        )
     return Agent(
         model_client=ModelClient(),
         workspace=workspace,
@@ -91,6 +106,7 @@ def build_agent(args: argparse.Namespace, workspace: Path, session_id: str | Non
         event_handler=print_verbose_event if args.verbose else None,
         max_steps=args.max_steps,
         max_errors=args.max_errors,
+        context_compressor=compressor,
     )
 
 

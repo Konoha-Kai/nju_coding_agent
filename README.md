@@ -24,9 +24,10 @@ Agent 运行流程：
 
 1. 接收用户任务。
 2. 构造系统提示词和多轮上下文。
-3. 调用 DeepSeek 模型。
-4. 如果模型返回工具调用，则执行工具并把结果写回上下文。
-5. 循环直到模型给出最终回答，或达到最大步数/错误阈值。
+3. 可选执行结构化上下文压缩。
+4. 调用 DeepSeek 模型。
+5. 如果模型返回工具调用，则执行工具并把结果写回上下文。
+6. 循环直到模型给出最终回答，或达到最大步数/错误阈值。
 
 相关文件：
 
@@ -61,6 +62,7 @@ Agent 运行流程：
 - 每次运行可生成 JSONL 会话日志，便于复盘。
 - CLI 支持 `--verbose`，运行时实时打印模型轮次、工具调用、工具结果和最终状态。
 - CLI 支持 `--chat`，可以在终端里进行“用户一句、Agent 一句”的多轮交互。每轮都会保留前面的问答摘要，并继续使用同一套本地工具和安全策略。
+- CLI 支持 `--compress-context`，长任务中会把旧消息压缩为结构化 summary，保留 system prompt 和最近若干轮原始消息。
 
 ### HumanEval 轻量 Benchmark
 
@@ -199,6 +201,19 @@ You: 再帮我运行 demo_workspace/tests，并总结测试结果
 You: exit
 ```
 
+开启结构化上下文压缩：
+
+```powershell
+$env:PYTHONIOENCODING='utf-8'
+C:\Users\23639\.conda\envs\nju\python.exe -s main.py --chat --workspace . --max-steps 10 --verbose --compress-context --context-max-messages 8 --context-keep-recent 4
+```
+
+压缩触发时，`--verbose` 会显示：
+
+```text
+[step 3] context compressed 12 -> 6 messages
+```
+
 ## 运行测试
 
 ```powershell
@@ -208,7 +223,7 @@ C:\Users\23639\.conda\envs\nju\python.exe -s -m pytest
 当前验证结果：
 
 ```text
-78 passed
+84 passed
 ```
 
 ## 开发文档

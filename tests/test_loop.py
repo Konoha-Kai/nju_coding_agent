@@ -7,6 +7,7 @@ import uuid
 
 from agent.bootstrap import build_default_registry
 from agent.context import ConversationContext
+from agent.context_compressor import ContextCompressor
 from agent.logger import SessionLogger
 from agent.loop import Agent
 from agent.model_client import ModelReply, ToolCall
@@ -407,3 +408,43 @@ def test_agent_returns_error_result_when_model_call_fails() -> None:
     assert result.steps == 1
     assert "Model call failed" in result.final_message
     assert events[-1][0] == "agent_error"
+
+
+def test_agent_compresses_context_before_model_call_when_threshold_is_exceeded() -> None:
+    workspace = make_workspace()
+    events: list[tuple[str, dict]] = []
+    model = FakeModelClient(
+        [
+            ModelReply(
+                content="",
+                tool_calls=[ToolCall(id="call_1", name="echo", arguments='{"text":"one"}')],
+                finish_reason="tool_calls",
+            ),
+            ModelReply(
+                content="",
+                tool_calls=[ToolCall(id="call_2", name="echo", arguments='{"text":"two"}')],
+                finish_reason="tool_calls",
+            ),
+            ModelReply(content="done", finish_reason="stop"),
+        ]
+    )
+    agent = Agent(
+        model_client=model,
+        workspace=workspace,
+        tool_registry=make_registry(),
+        event_handler=lambda event, data: events.append((event, data)),
+        context_compressor=ContextCompressor(max_messages=3, keep_recent_messages=1),
+        max_steps=4,
+    )
+
+    try:
+        result = agent.run("echo twice")
+    finally:
+        remove_workspace(workspace)
+
+    assert result.success
+    assert any(event == "context_compressed" for event, _ in events)
+    compressed_call = model.calls[1]
+    assert compressed_call["messages"][1]["role"] == "system"
+    assert "Structured context summary" in compressed_call["messages"][1]["content"]
+    assert len(compressed_call["messages"]) <= 4
